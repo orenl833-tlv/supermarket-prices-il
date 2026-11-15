@@ -1,0 +1,44 @@
+<Root>
+  <ChainID>7290058140886</ChainID>
+  <SubChainID>001</SubChainID>
+  <StoreID>733</StoreID>
+  <BikoretNo>4</BikoretNo>
+  <Items>
+    <Item>
+      <PriceUpdateTime>2026-04-27T14:32:28.000</PriceUpdateTime>
+      <ItemCode>7290011877859</ItemCode>
+      <LastSaleDateTime>2026-10-25T19:35:24.000</LastSaleDateTime>
+      <ItemType>1</ItemType>
+      <ItemName>אינסטלטור פותח סתימו</ItemName>
+      <ManufactureName>סנו</ManufactureName>
+      <ManufactureCountry>ישראל</ManufactureCountry>
+      <ManufactureItemDescription>אינסטלטור פותח סתימו</ManufactureItemDescription>
+      <UnitQty>מיליליטר</UnitQty>
+      <Quantity>200.00</Quantity>
+      <UnitOfMeasure>100 מיליליטר</UnitOfMeasure>
+      <bIsWeighted>0</bIsWeighted>
+      <QtyInPackage>לא ידוע</QtyInPackage>
+      <ItemPrice>14.90</ItemPrice>
+      <UnitOfMeasurePrice>7.45</UnitOfMeasurePrice>
+      <AllowDiscount>1</AllowDiscount>
+      <ItemStatus/>
+    </Item>
+    <Item>
+      <PriceUpdateTime>2026-01-12T16:00:31.000</PriceUpdateTime>
+      <ItemCode>0000000000123</ItemCode>
+      <ItemType>0</ItemType>
+      <ItemName>עגבניות</ItemName>
+      <ManufactureName>לא ידוע</ManufactureName>
+      <UnitQty>קילוגרם</UnitQty>
+      <Quantity>1.00</Quantity>
+      <bIsWeighted>1</bIsWeighted>
+      <ItemPrice>7.90</ItemPrice>
+    </Item>
+    <Item>
+      <ItemCode>7290000000001</ItemCode>
+      <ItemType>1</ItemType>
+      <ItemName>מוצר בלי מחיר</ItemName>
+      <ItemPrice>0.00</ItemPrice>
+    </Item>
+  </Items>
+</Root>
