@@ -24,7 +24,9 @@ export function buildServer(
 
   // In production the API also serves the built web app, so the whole site is one service.
   if (opts.webRoot) {
-    app.register(fastifyStatic, { root: opts.webRoot, wildcard: false });
+    // Files are looked up on each request (not registered once at startup), so a
+    // rebuild of the web app is served without restarting the API.
+    app.register(fastifyStatic, { root: opts.webRoot });
     app.setNotFoundHandler((req, reply) =>
       req.url.startsWith("/api/")
         ? reply.code(404).send({ error: "Not found" })

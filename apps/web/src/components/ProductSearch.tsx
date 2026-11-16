@@ -7,6 +7,7 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     const q = query.trim();
@@ -17,9 +18,16 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setLoading(true);
+      setFailed(false);
       searchProducts(q, controller.signal)
         .then(setResults)
-        .catch(() => {})
+        .catch((err: unknown) => {
+          // An aborted request was replaced by a newer one; anything else is a real failure.
+          if (!(err instanceof DOMException && err.name === "AbortError")) {
+            setResults([]);
+            setFailed(true);
+          }
+        })
         .finally(() => setLoading(false));
     }, 250);
     return () => {
@@ -75,7 +83,8 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
           ))}
         </ul>
       )}
-      {query.trim().length >= 2 && !loading && results.length === 0 && (
+      {failed && <p className="warn small">החיפוש לא זמין כרגע. נסו שוב בעוד רגע.</p>}
+      {query.trim().length >= 2 && !loading && !failed && results.length === 0 && (
         <p className="muted small">לא נמצאו מוצרים. נסו מילה אחרת או ברקוד.</p>
       )}
     </section>
