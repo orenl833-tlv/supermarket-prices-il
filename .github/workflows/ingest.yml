@@ -3,14 +3,24 @@ name: Daily ingest
 # Loads the newest price files into the production database every morning.
 # 03:40 UTC is 05:40 in Israeli winter and 06:40 in summer: after the chains
 # publish their full price files overnight. Scheduled runs use the default branch.
+#
+# The 05:40 UTC run is a retry. Runs are idempotent (files already loaded are
+# skipped), so on a normal day it finishes in a minute and changes nothing;
+# on a day a portal was down at 03:40 it picks up the missing branches.
 on:
   schedule:
     - cron: "40 3 * * *"
+    - cron: "40 5 * * *"
   workflow_dispatch:
 
 concurrency:
   group: ingest
   cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write # open or close the "Daily ingest failing" issue
+  actions: write # keep this scheduled workflow enabled
 
 jobs:
   ingest:
@@ -18,6 +28,9 @@ jobs:
     timeout-minutes: 30
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_TITLE: Daily ingest failing
+      SITE_URL: https://supermarket-prices-il.onrender.com
     steps:
       - name: Check configuration
         id: config
@@ -40,3 +53,36 @@ jobs:
       - name: Ingest (migrations, prices, geocoding)
         if: steps.config.outputs.enabled == 'true'
         run: npm run ingest -w @spil/pipeline
+
+      # Wake the free Render instance so the first visitor of the day does not
+      # wait for a cold start. Never fails the run.
+      - name: Warm up the site
+        if: always() && steps.config.outputs.enabled == 'true'
+        run: curl -fsS --max-time 90 "$SITE_URL/api/status" > /dev/null || echo "site did not answer"
+
+      # GitHub disables scheduled workflows after 60 days without commits.
+      # Re-enabling it on every run keeps the daily schedule alive indefinitely.
+      - name: Keep the schedule enabled
+        if: always()
+        run: gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/ingest.yml/enable" || true
+
+      # A failure opens one issue (GitHub emails the owner); later failures add
+      # a comment to it; the next good run closes it.
+      - name: Report failure
+        if: failure()
+        run: |
+          RUN_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          NUMBER=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMBER" ]; then
+            gh issue comment "$NUMBER" -R "$GITHUB_REPOSITORY" --body "Failed again: $RUN_URL"
+          else
+            gh issue create -R "$GITHUB_REPOSITORY" --title "$ISSUE_TITLE" \
+              --body "The daily ingest failed: $RUN_URL. The run log names the chain or branch. This issue closes itself after the next good run."
+          fi
+      - name: Close the failure issue
+        if: success() && steps.config.outputs.enabled == 'true'
+        run: |
+          NUMBER=$(gh issue list -R "$GITHUB_REPOSITORY" --state open --search "\"$ISSUE_TITLE\" in:title" --json number --jq '.[0].number')
+          if [ -n "$NUMBER" ]; then
+            gh issue close "$NUMBER" -R "$GITHUB_REPOSITORY" --comment "Recovered: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
