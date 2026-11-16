@@ -2,6 +2,7 @@
  * Parse the standard file name used by all chains:
  *   PriceFull<chain>-<subchain>-<store>-<YYYYMMDD>-<HHMM[SS]>.gz
  *   Stores<chain>-<subchain>-<YYYYMMDD>-<HHMMSS>.xml
+ * Victory (laibcatalog) also writes the time twice: Stores...-000-20261116060100-060100.gz
  *
  * File times are Israel local time. We keep them as an ISO string with the
  * Asia/Jerusalem offset of that date, so Postgres stores the right instant.
@@ -14,7 +15,7 @@ export interface FileNameInfo {
 }
 
 const PATTERN =
-  /^([A-Za-z]+)(\d{13})-(\d+)(?:-(\d+))?-(\d{8})-(\d{2,6})(?:\.\w+)*$/;
+  /^([A-Za-z]+)(\d{13})-(\d+)(?:-(\d+))?-(\d{8})(?:\d{6})?-(\d{2,6})(?:\.\w+)*$/;
 
 export function parseFileName(name: string): FileNameInfo | null {
   const m = PATTERN.exec(name);

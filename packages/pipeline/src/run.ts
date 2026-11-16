@@ -1,5 +1,7 @@
 import { fileURLToPath } from "node:url";
 import type pg from "pg";
+import { carrefour } from "./chains/carrefour.js";
+import { victory } from "./chains/laibcatalog.js";
 import { shufersal } from "./chains/shufersal.js";
 import { doralon, ramiLevy, yochananof } from "./chains/publishedprices.js";
 import { areaFromEnv, isInArea } from "./area.js";
@@ -21,7 +23,19 @@ import { checkPriceFile } from "./quality.js";
  * One branch failing does not stop the others; the process exits non-zero at
  * the end so the scheduler marks the run as failed.
  */
-const CHAINS: ChainSource[] = [shufersal, ramiLevy, doralon, yochananof];
+/**
+ * Carrefour and Victory only answer Israeli IP addresses, so they are loaded
+ * only where the pipeline runs from Israel (ISRAEL_CHAINS=1). Elsewhere they
+ * would just time out every day.
+ */
+const ISRAEL_ONLY: ChainSource[] = [carrefour, victory];
+const CHAINS: ChainSource[] = [
+  shufersal,
+  ramiLevy,
+  doralon,
+  yochananof,
+  ...(process.env.ISRAEL_CHAINS === "1" ? ISRAEL_ONLY : []),
+];
 const AREA = areaFromEnv();
 
 type Outcome = "loaded" | "skipped" | "rejected" | "failed";

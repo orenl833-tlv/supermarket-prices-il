@@ -109,7 +109,7 @@ The `Daily ingest` workflow runs every morning (and on demand from the Actions t
 
 - Products are matched across chains by barcode, and by close substitutes only within the 23 staple categories. Other products with chain-internal codes cannot be compared yet; the search shows when a product is sold by one chain only.
 - Regular prices only; promotions are not applied.
-- Carrefour and Victory are not loaded yet: their portals only answer Israeli IP addresses.
+- Carrefour and Victory are not loaded by the daily run yet: their portals only answer Israeli IP addresses, and GitHub's runners are abroad. Their adapters are written and tested against real files; setting `ISRAEL_CHAINS=1` on a run from an Israeli IP loads them.
 
 ## Data sources
 
@@ -121,7 +121,7 @@ Links and public usernames come from each chain's price-transparency page and th
 | AM:PM (Dor Alon) | 31 | url.publishedprices.co.il | Public username, no password |
 | Rami Levy | 6 | url.publishedprices.co.il | Public username, no password |
 | Yochananof | 4 | url.publishedprices.co.il | Public username, no password |
-| Carrefour | 23 | prices.carrefour.co.il | Public, Israeli IPs only |
-| Victory | 8 | laibcatalog.co.il | Public, Israeli IPs only |
+| Carrefour | 23 | prices.carrefour.co.il | Public, Israeli IPs only (adapter ready, `ISRAEL_CHAINS=1`) |
+| Victory | 9 | laibcatalog.co.il | Public, Israeli IPs only (adapter ready, `ISRAEL_CHAINS=1`) |
 
 Branches are matched to the city by CBS locality code, by city name, or, when a chain leaves the city empty (Yochananof), by a hand-checked list of branch codes.

@@ -97,6 +97,7 @@ const STREET_ALIASES: Record<string, string> = {
  *   "הרצל 91 עובר להרצל 114)"      -> "הרצל 91"
  *   "דרך נמיר 301 תל אביב&#x0D;"   -> "דרך נמיר 301"
  *   "אבן גבירול157"                -> "אבן גבירול 157"
+ *   "שד` רוטשילד 14"               -> "שדרות רוטשילד 14"
  * Placeholders like "unknown" give null.
  */
 export function cleanAddress(address: string | null): string | null {
@@ -110,6 +111,7 @@ export function cleanAddress(address: string | null): string | null {
   if (a === "" || /^(unknown|לא ידוע|0)$/i.test(a)) return null;
 
   a = a.replace(/^(רח'|רחוב)\s+/, "");
+  a = a.replace(/^שד['`׳]?\s+/, "שדרות "); // "שד` רוטשילד" -> "שדרות רוטשילד"
   // Keep "street number" and drop what follows: corners, notes, neighbourhoods, the city.
   const m = /^(\d+)\s+(\D+)$/.exec(a); // number first: "1 אחי מאיר"
   if (m) a = `${m[2]} ${m[1]}`;
