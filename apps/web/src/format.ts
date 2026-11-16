@@ -22,6 +22,13 @@ export function unitPrice(u: { price: number; per: keyof typeof PER } | null | u
   return u ? `${money(u.price)} ${PER[u.per]}` : "";
 }
 
+/** Prices older than this are flagged: the daily run should refresh every chain each morning. */
+export const STALE_AFTER_HOURS = 36;
+
+export function isStale(iso: string | null | undefined, now = Date.now()): boolean {
+  return !!iso && now - Date.parse(iso) > STALE_AFTER_HOURS * 3_600_000;
+}
+
 /** "לפני 3 שעות" style age of a timestamp. */
 export function age(iso: string, now = Date.now()): string {
   const hours = Math.round((now - Date.parse(iso)) / 3_600_000);

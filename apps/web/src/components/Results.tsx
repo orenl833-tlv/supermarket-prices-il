@@ -1,9 +1,18 @@
 import { useState } from "react";
 import type { CompareResult, Plan } from "../api";
-import { distance, money } from "../format";
+import { age, distance, isStale, money } from "../format";
 import { ResultsMap } from "./ResultsMap";
 
-export function Results({ result, origin }: { result: CompareResult; origin: { lat: number; lon: number } }) {
+export function Results({
+  result,
+  origin,
+  updatedAt = {},
+}: {
+  result: CompareResult;
+  origin: { lat: number; lon: number };
+  /** chain name -> when its prices were last updated */
+  updatedAt?: Record<string, string | null>;
+}) {
   const name = (id: number) => result.productNames[id] ?? `מוצר ${id}`;
   const [best, ...rest] = result.plans;
 
@@ -22,9 +31,9 @@ export function Results({ result, origin }: { result: CompareResult; origin: { l
         {result.unavailable.length > 0 && <> אין באזור: {result.unavailable.map(name).join(", ")}.</>}
       </p>
       <ResultsMap origin={origin} plans={result.plans} />
-      <PlanCard plan={best} best name={name} />
+      <PlanCard plan={best} best name={name} updatedAt={updatedAt} />
       {rest.map((plan, i) => (
-        <PlanCard key={i} plan={plan} name={name} diff={plan.score - best.score} />
+        <PlanCard key={i} plan={plan} name={name} diff={plan.score - best.score} updatedAt={updatedAt} />
       ))}
     </section>
   );
@@ -35,15 +44,18 @@ function PlanCard({
   best = false,
   diff = 0,
   name,
+  updatedAt,
 }: {
   plan: Plan;
   best?: boolean;
   diff?: number;
   name: (id: number) => string;
+  updatedAt: Record<string, string | null>;
 }) {
   const [open, setOpen] = useState(best);
   const stores = plan.stops.map((s) => `${s.store.chain} ${s.store.name}`).join(" + ");
   const substitutes = plan.stops.flatMap((s) => s.lines).filter((l) => l.substituteFor !== undefined);
+  const staleChains = [...new Set(plan.stops.map((s) => s.store.chain))].filter((c) => isStale(updatedAt[c]));
 
   return (
     <article className={`card plan ${best ? "best" : ""}`}>
@@ -66,6 +78,12 @@ function PlanCard({
           {!best && diff > 0 && <span className="muted small">+{money(diff)} מהמומלץ</span>}
         </div>
       </header>
+
+      {staleChains.map((chain) => (
+        <p key={chain} className="warn small">
+          המחירים של {chain} עודכנו {age(updatedAt[chain]!)}, ואולי השתנו מאז.
+        </p>
+      ))}
 
       {substitutes.length > 0 && (
         <p className="note small">

@@ -90,3 +90,13 @@ test("shares the list as a link that opens the same list elsewhere", async ({ pa
   await expect(theirs).toHaveURL(/\/$/); // the parameter is dropped after import
   await other.close();
 });
+
+test("warns when a chain's prices are out of date", async ({ page }) => {
+  await add(page, "חלב");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+
+  const fresh = page.locator(".plan", { hasText: "זולה דיזנגוף" });
+  const stale = page.locator(".plan", { hasText: "יקרה דיזנגוף" });
+  await expect(stale).toContainText("המחירים של יקרה עודכנו לפני 3 ימים");
+  await expect(fresh).not.toContainText("עודכנו");
+});
