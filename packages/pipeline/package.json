@@ -5,6 +5,7 @@
   "scripts": {
     "ingest": "tsx src/run.ts",
     "migrate": "tsx src/db/migrate.ts",
+    "geocode": "tsx src/geocode.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
