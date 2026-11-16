@@ -58,6 +58,18 @@ npm run dev             # API on :3001 and the web app on :5173
 
 A first run loads about 190,000 prices (49 MB). Later runs write only the prices that changed, and skip files already processed.
 
+## Deploying
+
+The whole site is one service: the API serves the built web app.
+
+```bash
+npm ci
+npm run build   # builds apps/web into apps/web/dist
+npm start       # API + web on $PORT (default 3001); needs DATABASE_URL
+```
+
+Or with Docker: `docker build -t supermarket-prices-il .` then run with `DATABASE_URL` set. The same image runs the daily ingest with `npm run ingest -w @spil/pipeline`.
+
 ## How a daily run works
 
 The `Daily ingest` workflow runs every morning (and on demand from the Actions tab). It needs one repository secret, `DATABASE_URL`, pointing at the production Postgres; without it the workflow does nothing.
