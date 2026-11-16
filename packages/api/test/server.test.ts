@@ -216,7 +216,11 @@ describe.skipIf(!url)("API", () => {
 
   it("reports data freshness per chain", async () => {
     const res = await app.inject({ url: "/api/status" });
-    expect(res.json().chains.map((c: { chain: string }) => c.chain)).toEqual(["זולה", "יקרה"]);
+    expect(res.json().chains).toEqual([
+      // No ingest_runs rows in this fixture, so no update time yet.
+      { chain: "זולה", updatedAt: null, branches: 2, products: 3 },
+      { chain: "יקרה", updatedAt: null, branches: 1, products: 4 },
+    ]);
   });
 });
 

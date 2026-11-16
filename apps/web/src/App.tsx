@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { compare, productsByIds, status, type BasketEntry, type CompareResult, type Product } from "./api";
+import { compare, productsByIds, status, type BasketEntry, type ChainStatus, type CompareResult, type Product } from "./api";
 import { Basket } from "./components/Basket";
 import { ProductSearch } from "./components/ProductSearch";
 import { Results } from "./components/Results";
@@ -20,7 +20,7 @@ export function App() {
   const [result, setResult] = useState<CompareResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [freshness, setFreshness] = useState<Array<{ chain: string; updatedAt: string | null }>>([]);
+  const [freshness, setFreshness] = useState<ChainStatus[]>([]);
   const online = useOnline();
 
   useEffect(() => storage.set("basket", basket), [basket]);
@@ -129,9 +129,45 @@ export function App() {
           מחירים רגילים, בלי מבצעים, מתוך הקבצים שהרשתות מפרסמות לפי חוק המזון.
           {updated && <> המחירים הישנים ביותר עודכנו {age(updated)}.</>}
         </p>
-        <p>{freshness.map((f) => f.chain).join(" · ")}</p>
+        {freshness.length > 0 && <DataPanel chains={freshness} />}
       </footer>
     </div>
+  );
+}
+
+/** What the daily pipeline loaded, per chain: shows the data is real and current. */
+function DataPanel({ chains }: { chains: ChainStatus[] }) {
+  const total = (key: "branches" | "products") => chains.reduce((sum, c) => sum + c[key], 0);
+  return (
+    <details className="data-panel">
+      <summary>
+        {chains.length} רשתות · {total("branches")} סניפים בתל אביב · על הנתונים
+      </summary>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">רשת</th>
+            <th scope="col">סניפים</th>
+            <th scope="col">מוצרים</th>
+            <th scope="col">עודכן</th>
+          </tr>
+        </thead>
+        <tbody>
+          {chains.map((c) => (
+            <tr key={c.chain}>
+              <th scope="row">{c.chain}</th>
+              <td>{c.branches}</td>
+              <td>{c.products.toLocaleString("he-IL")}</td>
+              <td>{c.updatedAt ? age(c.updatedAt) : "עוד לא"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p>
+        הנתונים נטענים כל בוקר אוטומטית מהקבצים שהרשתות מפרסמות.{" "}
+        <a href="https://github.com/orenl833-tlv/supermarket-prices-il">קוד המקור</a>
+      </p>
+    </details>
   );
 }
 

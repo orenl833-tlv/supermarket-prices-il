@@ -272,16 +272,37 @@ export async function productNames(db: pg.Pool, ids: number[]): Promise<Map<numb
   return new Map(rows.map((r) => [r.id, r.name]));
 }
 
-/** When each chain's prices were last updated, for the "updated X hours ago" line. */
-export async function freshness(db: pg.Pool): Promise<Array<{ chain: string; updatedAt: string | null }>> {
+export interface ChainStatus {
+  chain: string;
+  /** Publication time of the newest file loaded for the chain. */
+  updatedAt: string | null;
+  branches: number;
+  /** Products with a current price in at least one branch. */
+  products: number;
+}
+
+/**
+ * Per chain: when its prices were last updated and how much data we hold.
+ * Feeds the "updated X hours ago" line and the data panel in the footer.
+ * Each count is a separate subquery so one join cannot multiply another.
+ */
+export async function freshness(db: pg.Pool): Promise<ChainStatus[]> {
   const { rows } = await db.query(
-    `SELECT c.name AS chain, max(r.file_time) AS updated_at
+    `SELECT c.name AS chain,
+       (SELECT max(r.file_time) FROM ingest_runs r JOIN stores s ON s.id = r.store_id
+        WHERE s.chain_id = c.id AND r.status = 'ok') AS updated_at,
+       (SELECT count(*) FROM stores s WHERE s.chain_id = c.id)::int AS branches,
+       (SELECT count(DISTINCT pc.product_id) FROM price_changes pc JOIN stores s ON s.id = pc.store_id
+        WHERE s.chain_id = c.id AND pc.valid_to IS NULL)::int AS products
      FROM chains c
-     LEFT JOIN stores s ON s.chain_id = c.id
-     LEFT JOIN ingest_runs r ON r.store_id = s.id AND r.status = 'ok'
-     GROUP BY c.name ORDER BY c.name`,
+     ORDER BY c.name`,
   );
-  return rows.map((r) => ({ chain: r.chain, updatedAt: r.updated_at?.toISOString() ?? null }));
+  return rows.map((r) => ({
+    chain: r.chain,
+    updatedAt: r.updated_at?.toISOString() ?? null,
+    branches: r.branches,
+    products: r.products,
+  }));
 }
 
 function escapeLike(s: string): string {
