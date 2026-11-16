@@ -214,6 +214,22 @@ describe.skipIf(!url)("API", () => {
     expect(res.statusCode).toBe(400);
   });
 
+  it("ignores quote marks: geresh, gershayim and their ASCII look-alikes", async () => {
+    // Loaded on the far branch, which has no other prices, so the rest of the fixture is unchanged.
+    const chain = (await pool.query("SELECT chain_id FROM stores WHERE name = 'זולה רחוקה'")).rows[0].chain_id;
+    const store = (await pool.query("SELECT id FROM stores WHERE name = 'זולה רחוקה'")).rows[0].id;
+    const cottage = product("7290000000066", "גבינת קוטג\u05F3 5%", 6);
+    const ids = await upsertProducts(pool, chain, [cottage]);
+    await applyPrices(pool, store, new Date("2026-11-16T04:00:00Z"), [
+      { productId: ids.get(cottage.itemCode)!, price: 6 },
+    ]);
+
+    for (const q of ["קוטג'", "קוטג׳", "קוטג", 'גבינת "קוטג']) {
+      expect((await search(q)).map((p: { name: string }) => p.name), q).toEqual(["גבינת קוטג׳ 5%"]);
+    }
+    expect(await search("'\"")).toEqual([]);
+  });
+
   it("reports data freshness per chain", async () => {
     const res = await app.inject({ url: "/api/status" });
     expect(res.json().chains.map((c: { chain: string }) => c.chain)).toEqual(["זולה", "יקרה"]);

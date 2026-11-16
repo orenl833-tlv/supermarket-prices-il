@@ -44,14 +44,19 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
   if (q === "") return [];
 
   const isBarcode = /^\d{6,14}$/.test(q);
-  const words = q.split(/\s+/).map((w) => `%${escapeLike(w)}%`);
+  // Chains and users write קוטג' / קוטג׳ / קוטג and ש"ח / ש״ח interchangeably,
+  // so quote marks are removed from both sides before matching.
+  const plain = stripQuotes(q);
+  const words = plain.split(/\s+/).filter(Boolean).map((w) => `%${escapeLike(w)}%`);
+  if (!isBarcode && words.length === 0) return [];
+  const name = `translate(p.name, '${QUOTES.replace("'", "''")}', '')`;
   const { rows } = await db.query(
     `${HIT_COLUMNS}
-     WHERE ${isBarcode ? "p.barcode = $1" : "p.name ILIKE ALL ($1::text[])"}
+     WHERE ${isBarcode ? "p.barcode = $1" : `${name} ILIKE ALL ($1::text[])`}
      GROUP BY p.id, cat.name
-     ORDER BY p.name ILIKE $3 DESC, count(DISTINCT c.id) DESC, store_count DESC, length(p.name), p.name
+     ORDER BY ${name} ILIKE $3 DESC, count(DISTINCT c.id) DESC, store_count DESC, length(p.name), p.name
      LIMIT $2`,
-    [isBarcode ? q : words, limit, `${escapeLike(q.split(/\s+/)[0]!)}%`],
+    [isBarcode ? q : words, limit, `${escapeLike(plain.split(/\s+/)[0] ?? "")}%`],
   );
   return rows.map(toHit);
 }
@@ -282,6 +287,13 @@ export async function freshness(db: pg.Pool): Promise<Array<{ chain: string; upd
      GROUP BY c.name ORDER BY c.name`,
   );
   return rows.map((r) => ({ chain: r.chain, updatedAt: r.updated_at?.toISOString() ?? null }));
+}
+
+/** ASCII and Hebrew quote marks: ' " ׳ ״ */
+const QUOTES = `'"\u05F3\u05F4`;
+
+function stripQuotes(s: string): string {
+  return s.replace(/['"\u05F3\u05F4]/g, "").trim();
 }
 
 function escapeLike(s: string): string {
