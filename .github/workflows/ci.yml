@@ -28,3 +28,13 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # End-to-end: the built web app served by the API, on a seeded database.
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run e2e:seed -w @spil/web
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+      - run: npm run e2e -w @spil/web
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
