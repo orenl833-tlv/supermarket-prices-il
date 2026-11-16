@@ -16,7 +16,8 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
 - [x] Branch coordinates (73 of 74 branches geocoded with OpenStreetMap)
-- [ ] Scheduled daily run on hosted Postgres
+- [x] Scheduled daily run (`.github/workflows/ingest.yml`), active once a `DATABASE_URL` secret is set
+- [ ] Hosted Postgres
 - [x] Basket optimization engine (one or two stores, missing-item penalties)
 - [x] API (Fastify) and web app (React + TypeScript, Hebrew, mobile-first)
 - [ ] Public deployment
@@ -58,6 +59,9 @@ npm run dev             # API on :3001 and the web app on :5173
 A first run loads about 190,000 prices (49 MB). Later runs write only the prices that changed, and skip files already processed.
 
 ## How a daily run works
+
+The `Daily ingest` workflow runs every morning (and on demand from the Actions tab). It needs one repository secret, `DATABASE_URL`, pointing at the production Postgres; without it the workflow does nothing.
+
 
 1. Download each chain's Stores file and keep the branches in the target cities.
 2. For every branch, find its newest PriceFull file. Skip it if it was already processed, or if a newer file was.
