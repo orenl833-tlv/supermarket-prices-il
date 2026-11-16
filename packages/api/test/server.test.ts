@@ -181,6 +181,15 @@ describe.skipIf(!url)("API", () => {
     expect(cheapStore(anyBrand)).toMatchObject({ substitutionCost: 0 });
   });
 
+  it("suggests 'any eggs' when the search names the category", async () => {
+    const res = (await app.inject({ url: `/api/products?q=${encodeURIComponent("ביצים")}` })).json();
+    expect(res.suggestion).toMatchObject({ category: "ביצים" });
+    expect(res.suggestion.product.name).toMatch(/^ביצים/);
+    // Not for a word that is only part of a product name.
+    const other = (await app.inject({ url: `/api/products?q=${encodeURIComponent("לחם")}` })).json();
+    expect(other.suggestion).toBeNull();
+  });
+
   it("shows the category and price per unit in search results", async () => {
     const [eggs] = await search("ביצים L ארוזות");
     expect(eggs).toMatchObject({ category: "ביצים", unitPrice: { price: 1, per: "egg" } }); // 12 / 12 eggs

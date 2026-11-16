@@ -34,6 +34,7 @@ const pick =
 export const CATEGORIES: CategoryDef[] = [
   {
     key: "eggs",
+    defaults: { size: "L", type: "regular" },
     name: "ביצים",
     unit: "egg",
     weighted: false,
@@ -67,6 +68,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "milk",
+    defaults: { fat: "3%", lactose: "regular" },
     name: "חלב",
     unit: "ml",
     weighted: false,
@@ -89,6 +91,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "cottage",
+    defaults: { fat: "5%" },
     name: "קוטג'",
     unit: "g",
     weighted: false,
@@ -110,6 +113,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "white-cheese",
+    defaults: { fat: "5%" },
     name: "גבינה לבנה",
     unit: "g",
     weighted: false,
@@ -130,6 +134,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "butter",
+    defaults: { salt: "unsalted" },
     name: "חמאה",
     unit: "g",
     weighted: false,
@@ -168,6 +173,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "flour",
+    defaults: { kind: "white" },
     name: "קמח",
     unit: "g",
     weighted: false,
@@ -180,11 +186,13 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "rice",
+    // Everyday rice in Israel is Persian rice.
+    defaults: { kind: "persian" },
     name: "אורז",
     unit: "g",
     weighted: false,
     match: /^אורז/,
-    exclude: /פריכיות|עוגיות|קרקר|משקה|חלב|אטריות|נייר|קמח|מוכן|תבשיל|בשקיות בישול/,
+    exclude: /פריכיות|עוגיות|קרקר|משקה|חלב|אטריות|נייר|קמח|מוכן|תבשיל|בשקיות בישול|\+|עדשים|טונה|ירקות|פטריות|מוקפץ|ממולא|תערובת/,
     shelfLifeDays: 730,
     attributes: [
       {
@@ -196,8 +204,9 @@ export const CATEGORIES: CategoryDef[] = [
             [/יסמין|תאילנדי/, "jasmine"],
             [/פרסי/, "persian"],
             [/מלא|חום/, "brown"],
-            [/עגול|סושי/, "round"],
+            [/עגול|סושי|סטיקי|דביק|ריזוטו|ארבוריו/, "round"],
             [/פרא/, "wild"],
+            [/מיקס/, "mix"],
             [/אדום|שחור/, "red-black"],
           ],
           "white",
@@ -207,6 +216,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "cooking-oil",
+    defaults: { kind: "canola" },
     name: "שמן לבישול",
     unit: "ml",
     weighted: false,
@@ -240,6 +250,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "tuna",
+    defaults: { packed: "oil" },
     name: "טונה בקופסה",
     unit: "g",
     weighted: false,
@@ -260,6 +271,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "sour-cream",
+    defaults: { fat: "15%" },
     name: "שמנת חמוצה",
     unit: "ml",
     weighted: false,
@@ -281,6 +293,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "cooking-cream",
+    defaults: { fat: "15%" },
     name: "שמנת לבישול",
     unit: "ml",
     weighted: false,
@@ -299,6 +312,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "whipping-cream",
+    defaults: { fat: "38%" },
     name: "שמנת מתוקה להקצפה",
     unit: "ml",
     weighted: false,
@@ -320,6 +334,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "plain-yogurt",
+    defaults: { fat: "3%", lactose: "regular" },
     name: "יוגורט טבעי",
     unit: "g",
     weighted: false,
@@ -341,6 +356,7 @@ export const CATEGORIES: CategoryDef[] = [
   },
   {
     key: "salt",
+    defaults: { grain: "fine" },
     name: "מלח",
     unit: "g",
     weighted: false,

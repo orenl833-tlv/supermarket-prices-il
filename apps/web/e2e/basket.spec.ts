@@ -61,3 +61,12 @@ test("opens the basket without a connection", async ({ page, context }) => {
   await expect(page.getByRole("button", { name: "איפה הכי זול?" })).toBeDisabled();
   await context.setOffline(false);
 });
+
+test("adds a whole category, any brand, from the search", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("ביצים");
+  await page.getByRole("button", { name: /ביצים, כל מותג/ }).click();
+
+  const item = page.locator(".basket-item");
+  await expect(item).toHaveCount(1);
+  await expect(item.getByLabel("גם מותג אחר")).toBeChecked();
+});

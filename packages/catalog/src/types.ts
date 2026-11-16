@@ -36,6 +36,12 @@ export interface CategoryDef {
   match: RegExp;
   exclude?: RegExp;
   attributes: AttributeDef[];
+  /**
+   * What a shopper means by the bare category name: "חלב" is 3% cow's milk,
+   * not 1% or lactose-free. Used to pick the product that stands for the
+   * category when someone searches for it.
+   */
+  defaults?: Record<string, string>;
   /** Assumed size when a name does not say, e.g. a carton of eggs holds 12. */
   typicalSize?: number;
   /** Attributes that must be readable for a product to belong (real milk always states its fat %). */

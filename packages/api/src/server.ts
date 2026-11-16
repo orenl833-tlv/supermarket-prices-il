@@ -2,7 +2,15 @@ import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
-import { currentPrices, findSubstitutes, freshness, productNames, searchProducts, storesNear } from "./queries.js";
+import {
+  categorySuggestion,
+  currentPrices,
+  findSubstitutes,
+  freshness,
+  productNames,
+  searchProducts,
+  storesNear,
+} from "./queries.js";
 
 /** Most stores considered in one comparison; keeps 2-store search at C(30,2) = 435 pairs. */
 const MAX_CANDIDATE_STORES = 30;
@@ -47,7 +55,13 @@ export function buildServer(
         },
       },
     },
-    async (req) => ({ products: await searchProducts(db, req.query.q) }),
+    async (req) => {
+      const [products, suggestion] = await Promise.all([
+        searchProducts(db, req.query.q),
+        categorySuggestion(db, req.query.q),
+      ]);
+      return { products, suggestion };
+    },
   );
 
   app.post<{ Body: CompareBody }>(
