@@ -100,3 +100,11 @@ test("warns when a chain's prices are out of date", async ({ page }) => {
   await expect(stale).toContainText("המחירים של יקרה עודכנו לפני 3 ימים");
   await expect(fresh).not.toContainText("עודכנו");
 });
+
+test("shows what the pipeline loaded per chain", async ({ page }) => {
+  const panel = page.locator(".data-panel");
+  await expect(panel.locator("summary")).toContainText("2 רשתות");
+  await panel.locator("summary").click();
+  await expect(panel.getByRole("row")).toHaveCount(3); // header + two chains
+  await expect(panel.getByRole("rowheader").first()).toHaveText("זולה");
+});

@@ -99,7 +99,14 @@ export async function compare(body: CompareRequest): Promise<CompareResult> {
   return res.json();
 }
 
-export async function status(): Promise<Array<{ chain: string; updatedAt: string | null }>> {
+export interface ChainStatus {
+  chain: string;
+  updatedAt: string | null;
+  branches: number;
+  products: number;
+}
+
+export async function status(): Promise<ChainStatus[]> {
   const res = await fetch("/api/status");
   if (!res.ok) return [];
   return (await res.json()).chains;
