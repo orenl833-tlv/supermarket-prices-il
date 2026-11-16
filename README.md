@@ -10,6 +10,7 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
+- [x] Branch coordinates (73 of 74 branches geocoded with OpenStreetMap)
 - [ ] Scheduled daily run on hosted Postgres
 - [ ] Basket optimization engine
 - [ ] Web app (React + TypeScript)
@@ -54,6 +55,7 @@ A first run loads about 190,000 prices (49 MB). Later runs write only the prices
 3. Decode (gzip, UTF-8 or UTF-16), parse, and normalize units to grams, millilitres or units.
 4. Quality checks: drop absurd prices, reject the file if too many lines are unusable or if the list shrank by more than half since the last good run (a cut-off download). A rejected file leaves the previous prices in place.
 5. In one transaction: upsert products (barcoded products are shared across chains), close changed prices, open new ones.
+6. Geocode branches that are new or whose address changed (Nominatim structured search, one request per second). A normal day makes no requests.
 
 ## Design notes
 
