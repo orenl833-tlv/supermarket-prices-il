@@ -2,6 +2,11 @@
 
 Find the cheapest nearby supermarket for your whole shopping basket in Israel.
 
+<p>
+  <img src="docs/screenshot-basket.png" alt="Shopping list with quantities and importance" width="300">
+  <img src="docs/screenshot-result.png" alt="Cheapest store for the basket, with a per-item breakdown" width="300">
+</p>
+
 Under Israel's food price transparency law, large supermarket chains publish the price of every product in every branch as XML files. The data is public but hard to use: each chain has its own portal and format. This project downloads those files daily, normalizes them into one PostgreSQL database, and (soon) serves a web app that compares a full basket across nearby branches.
 
 ## Status
@@ -12,8 +17,8 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
 - [x] Branch coordinates (73 of 74 branches geocoded with OpenStreetMap)
 - [ ] Scheduled daily run on hosted Postgres
-- [ ] Basket optimization engine
-- [ ] Web app (React + TypeScript)
+- [x] Basket optimization engine (one or two stores, missing-item penalties)
+- [x] API (Fastify) and web app (React + TypeScript, Hebrew, mobile-first)
 - [ ] Public deployment
 
 ## Stack
@@ -30,7 +35,10 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 
 ```
 db/migrations/      SQL schema migrations, applied in order
-packages/pipeline/  Download, parse and load the chains' price files
+packages/pipeline/  Download, parse and load the chains' price files; geocode branches
+packages/engine/    Basket optimization: pure TypeScript, no I/O
+packages/api/       HTTP API (Fastify): product search, basket comparison, data freshness
+apps/web/           Web app (React + Vite), Hebrew RTL, mobile-first
 ```
 
 ## Running locally
@@ -44,6 +52,7 @@ export $(cat .env | xargs)
 npm run migrate -w @spil/pipeline
 npm run ingest -w @spil/pipeline
 npm test                # integration tests run when TEST_DATABASE_URL is set
+npm run dev             # API on :3001 and the web app on :5173
 ```
 
 A first run loads about 190,000 prices (49 MB). Later runs write only the prices that changed, and skip files already processed.
@@ -61,7 +70,15 @@ A first run loads about 190,000 prices (49 MB). Later runs write only the prices
 
 - **Store price changes, not snapshots.** `price_changes` keeps one row per price period (`valid_from` / `valid_to`). A daily run only writes rows for prices that changed, so the database stays small and price history comes for free.
 - **Idempotent runs.** Every processed file is recorded in `ingest_runs`; re-running on the same file changes nothing.
-- **One engine, two cost models** (planned): picking branches within a radius and splitting an online order across chains are the same problem, a choice of sources with a fixed cost per source.
+- **One engine, two cost models.** Picking branches within a radius and splitting an online order across chains are the same problem: choose a set of stores, buy each item where it is cheapest, and add a fixed cost per store. Only the fixed cost differs (an extra stop vs. a delivery fee with a minimum order), so the engine takes a `CostModel`. Delivery is implemented and tested but not exposed yet.
+- **Missing items are priced, not ignored.** Otherwise the "cheapest" store is the one with the most gaps. A missing item costs its highest price nearby plus one extra trip; a "must" item rules a store out; an "if available" item costs nothing.
+- **Exhaustive search.** With up to 30 nearby stores and at most 2 stops there are 465 combinations, so the engine tries them all and the answer is exact.
+
+## Known limitations
+
+- Products are matched across chains by barcode only. Produce and some private-label items use chain-internal codes and cannot be compared yet; the search shows when a product is sold by one chain only. Categories and substitutes are the next phase.
+- Regular prices only; promotions are not applied.
+- Carrefour and Victory are not loaded yet: their portals only answer Israeli IP addresses.
 
 ## Data sources
 
