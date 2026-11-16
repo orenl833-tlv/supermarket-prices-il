@@ -15,9 +15,9 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
-- [x] Branch coordinates (73 of 74 branches geocoded with OpenStreetMap)
+- [x] Branch coordinates (all 74 branches; one address supplied by hand)
 - [x] Scheduled daily run (`.github/workflows/ingest.yml`), active once a `DATABASE_URL` secret is set
-- [ ] Hosted Postgres
+- [x] Hosted Postgres (Neon), loaded by the daily run
 - [x] Basket optimization engine (one or two stores, missing-item penalties)
 - [x] API (Fastify) and web app (React + TypeScript, Hebrew, mobile-first)
 - [ ] Public deployment
@@ -68,6 +68,8 @@ npm ci
 npm run build   # builds apps/web into apps/web/dist
 npm start       # API + web on $PORT (default 3001); needs DATABASE_URL
 ```
+
+On Render, `render.yaml` describes the service: New → Blueprint → this repository, then paste the Neon connection string when asked for `DATABASE_URL`.
 
 Or with Docker: `docker build -t supermarket-prices-il .` then run with `DATABASE_URL` set. The same image runs the daily ingest with `npm run ingest -w @spil/pipeline`.
 

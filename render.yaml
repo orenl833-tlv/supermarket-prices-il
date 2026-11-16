@@ -1,0 +1,16 @@
+# Render Blueprint: one web service built from the Dockerfile.
+# In Render: New -> Blueprint -> pick this repository. Render asks for
+# DATABASE_URL (sync: false keeps it out of this file); paste the Neon
+# connection string there.
+services:
+  - type: web
+    name: supermarket-prices-il
+    runtime: docker
+    plan: free
+    region: frankfurt # close to the Neon database (eu-central-1)
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true # redeploy on every push to main
+    envVars:
+      - key: DATABASE_URL
+        sync: false
