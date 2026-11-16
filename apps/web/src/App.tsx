@@ -92,7 +92,7 @@ export function App() {
           {loading ? "משווה…" : "איפה הכי זול?"}
         </button>
         {error && <p className="warn">{error}</p>}
-        {result && <Results result={result} />}
+        {result && <Results result={result} origin={settings.location} />}
       </main>
 
       <footer className="muted small">

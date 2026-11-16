@@ -23,6 +23,8 @@ test("finds the cheapest nearby store for a basket", async ({ page }) => {
   await expect(best.getByRole("heading")).toHaveText("זולה זולה דיזנגוף");
   await expect(best.locator(".price strong")).toContainText("13.50"); // 6.50 + 7.00
   await expect(page.locator(".plan")).toHaveCount(2);
+  // The map shows the starting point and both stores.
+  await expect(page.locator(".results-map path.leaflet-interactive")).toHaveCount(3);
 });
 
 test("offers a close substitute where the exact product is missing", async ({ page }) => {
