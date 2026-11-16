@@ -2,6 +2,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { applyPrices, upsertChain, upsertProducts, upsertStores } from "@spil/pipeline/src/db/load.js";
 import { migrate } from "@spil/pipeline/src/db/migrate.js";
+import { classifyProducts } from "@spil/pipeline/src/classify.js";
 import type { PriceItem } from "@spil/pipeline/src/types.js";
 import { buildServer } from "../src/server.js";
 
@@ -41,22 +42,30 @@ describe.skipIf(!url)("API", () => {
     await pool.query("UPDATE stores SET lat = 32.084, lon = 34.78 WHERE name LIKE '%מרכז'");
     await pool.query("UPDATE stores SET lat = 32.17, lon = 34.78 WHERE name = 'זולה רחוקה'");
 
-    const milk = product("7290000000011", "חלב 3% שומן 1 ליטר", 7);
+    const milk = { ...product("7290000000011", "חלב 3% שומן 1 ליטר", 7), quantity: 1000, unit: "ml" as const };
     const bread = product("7290000000028", "לחם אחיד פרוס", 8);
     const oat = product("7290000000035", "משקה שיבולת שועל", 15);
+    // Each chain sells its own 12-pack of eggs (different barcodes): close substitutes.
+    const eggsA = product("7290000000042", "ביצים L ארוזות 12 י", 12);
+    const eggsB = product("7290000000059", "ביצים 12 יח גדול L", 13);
     const day = new Date("2026-11-16T04:00:00Z");
 
-    const aIds = await upsertProducts(pool, a, [milk, bread]);
+    // One full price list per branch: applyPrices treats the list as complete.
+    const aIds = await upsertProducts(pool, a, [milk, bread, eggsA]);
     await applyPrices(pool, aStores.get("1")!, day, [
       { productId: aIds.get(milk.itemCode)!, price: 6.5 },
       { productId: aIds.get(bread.itemCode)!, price: 7 },
+      { productId: aIds.get(eggsA.itemCode)!, price: 12 },
     ]);
-    const bIds = await upsertProducts(pool, b, [milk, bread, oat]);
+    const bIds = await upsertProducts(pool, b, [milk, bread, oat, eggsB]);
     await applyPrices(pool, bStores.get("1")!, day, [
       { productId: bIds.get(milk.itemCode)!, price: 7.9 },
       { productId: bIds.get(bread.itemCode)!, price: 9 },
       { productId: bIds.get(oat.itemCode)!, price: 15 },
+      { productId: bIds.get(eggsB.itemCode)!, price: 13 },
     ]);
+
+    await classifyProducts(pool);
 
     app = buildServer(pool);
   });
@@ -116,6 +125,32 @@ describe.skipIf(!url)("API", () => {
     expect(best.missing).toEqual([{ productId: oat, importance: "optional", penalty: 0 }]);
     expect(second.stops[0].store.name).toBe("יקרה מרכז");
     expect(body.productNames[milk]).toBe("חלב 3% שומן 1 ליטר");
+  });
+
+  it("offers a close substitute in a store that lacks the exact product", async () => {
+    const [eggsA] = await search("ביצים L ארוזות");
+    const [bread] = await search("לחם");
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/compare",
+      payload: {
+        ...center,
+        radiusKm: 2,
+        items: [
+          { productId: eggsA.id, quantity: 1, importance: "must" },
+          { productId: bread.id, quantity: 1 },
+        ],
+      },
+    });
+    const body = res.json();
+    const expensive = body.plans.find(
+      (p: { stops: Array<{ store: { name: string } }> }) => p.stops[0]?.store.name === "יקרה מרכז",
+    );
+    const eggsLine = expensive.stops[0].lines.find((l: { substituteFor?: number }) => l.substituteFor === eggsA.id);
+    expect(eggsLine).toMatchObject({ quantity: 1, unitPrice: 13, lineTotal: 13 });
+    expect(body.productNames[eggsLine.productId]).toBe("ביצים 12 יח גדול L");
+    expect(expensive.substitutionCost).toBe(0.5); // same size, same type: base penalty only
+    expect(body.unavailable).toEqual([]);
   });
 
   it("rejects bad input", async () => {

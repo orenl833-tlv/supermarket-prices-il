@@ -9,6 +9,7 @@ import { migrate } from "./db/migrate.js";
 import { createPool, inTransaction } from "./db/pool.js";
 import { decodeFile } from "./encoding.js";
 import { parseFileName } from "./filename.js";
+import { classifyProducts } from "./classify.js";
 import { geocodeStores } from "./geocode.js";
 import { parsePriceFull, parseStores } from "./parse.js";
 import { checkPriceFile } from "./quality.js";
@@ -148,6 +149,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   try {
     await migrate(pool);
     const totals = await ingest(pool);
+    const { classified, changed } = await classifyProducts(pool);
+    console.log(`categories: ${classified} products classified, ${changed} changed`);
     // Coordinates for new or moved branches. A geocoding problem is logged
     // but does not fail the run: prices are still correct without it.
     const geo = await geocodeStores(pool).catch((err) => ({ updated: 0, failed: [message(err)] }));

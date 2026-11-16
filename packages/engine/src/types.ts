@@ -27,11 +27,29 @@ export interface CostModel {
   fixedCost(stops: ReadonlyArray<{ store: Store; subtotal: number }>): number | null;
 }
 
+/**
+ * A close substitute for a basket item in one store, already priced: whole
+ * packs that cover the amount asked for (see @spil/catalog bestSubstitute).
+ */
+export interface Substitute {
+  productId: number;
+  quantity: number; // packs, or kg for weighted produce
+  unitPrice: number;
+  lineTotal: number;
+  /** Small ranking cost for "not exactly what you asked for". */
+  penalty: number;
+}
+
+/** storeId -> basket productId -> its best substitute in that store. */
+export type SubstituteTable = ReadonlyMap<number, ReadonlyMap<number, Substitute>>;
+
 export interface PlanLine {
   productId: number;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
+  /** Set when this line is a substitute: the basket product it replaces. */
+  substituteFor?: number;
 }
 
 export interface PlanStop {
@@ -52,5 +70,6 @@ export interface Plan {
   itemsCost: number; // what you pay at the till(s)
   fixedCost: number; // extra stops or delivery fees
   penaltyCost: number; // missing items, plus a trip to buy them elsewhere
-  score: number; // itemsCost + fixedCost + penaltyCost: plans are ranked by this
+  substitutionCost: number; // small penalties for substitutes
+  score: number; // itemsCost + fixedCost + penaltyCost + substitutionCost: plans are ranked by this
 }

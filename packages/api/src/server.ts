@@ -2,7 +2,7 @@ import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
-import { currentPrices, freshness, productNames, searchProducts, storesNear } from "./queries.js";
+import { currentPrices, findSubstitutes, freshness, productNames, searchProducts, storesNear } from "./queries.js";
 
 /** Most stores considered in one comparison; keeps 2-store search at C(30,2) = 435 pairs. */
 const MAX_CANDIDATE_STORES = 30;
@@ -85,6 +85,7 @@ export function buildServer(
       const stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
       const productIds = items.map((i) => i.productId);
       const prices = await currentPrices(db, stores.map((s) => s.id), productIds);
+      const substitutes = await findSubstitutes(db, items, stores.map((s) => s.id), prices);
 
       const plans = optimize({
         basket: items,
@@ -95,11 +96,16 @@ export function buildServer(
         penalties: missingPenalties(items, stores, prices),
         missingTripCost: extraStopCost,
         onePerChain: true,
+        substitutes,
       });
 
-      // Items no nearby store sells at all: shown separately, not as a fault of any plan.
-      const unavailable = productIds.filter((id) => !stores.some((s) => prices.get(s.id)?.has(id)));
-      const names = await productNames(db, productIds);
+      // Items no nearby store sells, not even as a substitute: shown separately,
+      // not as a fault of any plan.
+      const unavailable = productIds.filter(
+        (id) => !stores.some((s) => prices.get(s.id)?.has(id) || substitutes.get(s.id)?.has(id)),
+      );
+      const usedIds = plans.flatMap((p) => p.stops.flatMap((s) => s.lines.map((l) => l.productId)));
+      const names = await productNames(db, [...new Set([...productIds, ...usedIds])]);
       const storeById = new Map(stores.map((s) => [s.id, s]));
 
       return {

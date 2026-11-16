@@ -189,3 +189,69 @@ describe("helpers", () => {
     expect(d).toBeLessThan(1.7);
   });
 });
+
+describe("optimize, substitutes", () => {
+  // Store 1 has milk (10) but not our eggs (12); it has other eggs (13) for 14.
+  // Store 2 has both exact products but costs more overall.
+  const stores = [store(1), store(2)];
+  const prices = table({
+    1: { 10: 7, 13: 14 },
+    2: { 10: 8, 12: 18 },
+  });
+  const substitutes = new Map([
+    [1, new Map([[12, { productId: 13, quantity: 1, unitPrice: 14, lineTotal: 14, penalty: 0.5 }]])],
+  ]);
+  const run = (basket: BasketItem[], subs = substitutes) =>
+    optimize({
+      basket,
+      stores,
+      prices,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: 15,
+      substitutes: subs,
+    });
+
+  it("uses a close substitute where the exact product is missing", () => {
+    const [best] = run([item(10), item(12)]);
+    expect(best?.stops[0]?.store.id).toBe(1);
+    expect(best?.stops[0]?.lines[1]).toEqual({
+      productId: 13,
+      quantity: 1,
+      unitPrice: 14,
+      lineTotal: 14,
+      substituteFor: 12,
+    });
+    expect(best?.missing).toEqual([]);
+    expect(best?.substitutionCost).toBe(0.5);
+    expect(best?.score).toBe(21.5); // 7 + 14 + 0.5, beats 26 at store 2
+  });
+
+  it("lets a substitute satisfy a must-have item", () => {
+    const [best] = run([item(10), item(12, "must")]);
+    expect(best?.stops[0]?.store.id).toBe(1);
+  });
+
+  it("without substitutes the same store is charged for a missing item", () => {
+    const [best] = run([item(10), item(12)], new Map());
+    expect(best?.stops[0]?.store.id).toBe(2); // 26 beats 7 + 18 penalty + 15 trip
+  });
+
+  it("ignores a store's substitute when that store has the exact product", () => {
+    const tie = table({ 1: { 10: 7 }, 2: { 10: 6.5 } });
+    const [best] = optimize({
+      basket: [item(10)],
+      stores,
+      prices: tie,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: new Map(),
+      missingTripCost: 15,
+      substitutes: new Map([[1, new Map([[10, { productId: 99, quantity: 1, unitPrice: 6, lineTotal: 6, penalty: 0.5 }]])]]),
+    });
+    // Store 1 has the exact product, so its substitute is not considered at all.
+    expect(best?.stops[0]?.store.id).toBe(2);
+    expect(best?.stops[0]?.lines[0]?.substituteFor).toBeUndefined();
+  });
+});
