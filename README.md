@@ -22,7 +22,7 @@ Under Israel's food price transparency law, large supermarket chains publish the
 
 ## Status
 
-Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 74 branches.
+Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Four chains, 74 branches; Carrefour and Victory are ready but need a run from an Israeli IP.
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
