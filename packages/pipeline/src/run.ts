@@ -154,6 +154,23 @@ async function ingestStore(
   }
 }
 
+/**
+ * The free Neon plan stops writes at 0.5 GB. Prices are stored only when they
+ * change, so growth is slow, but a warning well before the limit leaves time
+ * to act. The ::warning:: prefix shows it on the GitHub Actions run page.
+ */
+const DB_SIZE_WARN_BYTES = 400 * 1024 * 1024;
+
+async function reportDatabaseSize(pool: pg.Pool): Promise<void> {
+  const { rows } = await pool.query<{ bytes: string }>(
+    "SELECT pg_database_size(current_database()) AS bytes",
+  );
+  const bytes = Number(rows[0]!.bytes);
+  const mb = (bytes / 1024 / 1024).toFixed(1);
+  if (bytes > DB_SIZE_WARN_BYTES) console.warn(`::warning::database size ${mb} MB is close to the free plan limit`);
+  else console.log(`database size: ${mb} MB`);
+}
+
 function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
@@ -170,6 +187,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const geo = await geocodeStores(pool).catch((err) => ({ updated: 0, failed: [message(err)] }));
     if (geo.updated > 0) console.log(`geocoded ${geo.updated} branches`);
     for (const f of geo.failed) console.warn(`geocoding: ${f}`);
+    await reportDatabaseSize(pool);
     console.log("done", totals);
     if (totals.failed > 0) process.exitCode = 1;
   } finally {

@@ -133,6 +133,16 @@ The `Daily ingest` workflow runs every morning (and on demand from the Actions t
 4. Quality checks: drop absurd prices, reject the file if too many lines are unusable or if the list shrank by more than half since the last good run (a cut-off download). A rejected file leaves the previous prices in place.
 5. In one transaction: upsert products (barcoded products are shared across chains), close changed prices, open new ones.
 6. Geocode branches that are new or whose address changed (Nominatim structured search, one request per second). A normal day makes no requests.
+7. Log the database size, with a warning well before the free plan's 0.5 GB limit.
+
+### Running unattended
+
+The daily run costs nothing and makes no AI calls: classification is rule-based. It is built to need no attention:
+
+- **Retry:** a second run two hours later picks up branches whose portal was down. On a normal day it skips everything in about a minute.
+- **Alerts:** a failed run opens a "Daily ingest failing" issue (GitHub emails the owner), and the next good run closes it.
+- **Schedule kept alive:** GitHub turns off scheduled workflows after 60 days without commits; each run re-enables its own workflow.
+- **Warm site:** each run calls the site, so the free Render instance is awake for the morning's first visitors.
 
 ## Design notes
 
