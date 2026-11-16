@@ -83,6 +83,12 @@ export async function searchProducts(q: string, signal?: AbortSignal): Promise<S
   return { products: body.products, suggestion: body.suggestion ?? null };
 }
 
+export async function productsByIds(ids: number[]): Promise<Product[]> {
+  const res = await fetch(`/api/products/by-id?ids=${ids.join(",")}`);
+  if (!res.ok) throw new Error(`products failed: ${res.status}`);
+  return (await res.json()).products;
+}
+
 export async function compare(body: CompareRequest): Promise<CompareResult> {
   const res = await fetch("/api/compare", {
     method: "POST",

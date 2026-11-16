@@ -197,6 +197,14 @@ describe.skipIf(!url)("API", () => {
     expect(milk.unitPrice).toEqual({ price: 6.5, per: "liter" }); // cheapest 6.50 per 1 litre
   });
 
+  it("returns products by id, in the order asked, for opening a shared list", async () => {
+    const [milk] = await search("חלב");
+    const [bread] = await search("לחם");
+    const res = await app.inject({ url: `/api/products/by-id?ids=${bread.id},999999,${milk.id}` });
+    expect(res.json().products.map((p: { id: number }) => p.id)).toEqual([bread.id, milk.id]);
+    expect((await app.inject({ url: "/api/products/by-id?ids=1;DROP" })).statusCode).toBe(400);
+  });
+
   it("rejects bad input", async () => {
     const res = await app.inject({
       method: "POST",

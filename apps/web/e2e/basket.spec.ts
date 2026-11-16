@@ -72,3 +72,21 @@ test("adds a whole category, any brand, from the search", async ({ page }) => {
   await expect(item).toHaveCount(1);
   await expect(item.getByLabel("גם מותג אחר")).toBeChecked();
 });
+
+test("shares the list as a link that opens the same list elsewhere", async ({ page, browser }) => {
+  await add(page, "חלב");
+  await add(page, "לחם");
+  await page.locator(".basket-item").nth(1).getByRole("radio", { name: "חובה" }).click();
+  await page.getByRole("button", { name: "שיתוף" }).click();
+  const link = await page.getByLabel("קישור לרשימה").inputValue();
+  expect(link).toMatch(/\?list=\d+-1-n-0,\d+-1-m-0$/);
+
+  // Someone else opens it: a fresh browser context, empty storage.
+  const other = await browser.newContext();
+  const theirs = await other.newPage();
+  await theirs.goto(link);
+  await expect(theirs.locator(".basket-item")).toHaveCount(2);
+  await expect(theirs.locator(".basket-item").nth(1).getByRole("radio", { name: "חובה" })).toHaveAttribute("aria-checked", "true");
+  await expect(theirs).toHaveURL(/\/$/); // the parameter is dropped after import
+  await other.close();
+});
