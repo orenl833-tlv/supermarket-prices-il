@@ -18,7 +18,9 @@ Under Israel's food price transparency law, large supermarket chains publish the
 - Offers close substitutes when a store lacks the exact product, priced as the whole packs you would actually buy; "any brand" items take the cheapest close product in each store.
 - Search by name or barcode, with price per litre, kg or egg; typing a category ("ביצים") offers "eggs, any brand" in one tap.
 - Shows the results on a map, shares a list as a link (WhatsApp-friendly, no accounts), installs on a phone and opens the list without a connection.
-- Flags a chain whose prices are out of date.
+- Sends the chosen plan as a shopping list grouped by store.
+- Flags a chain whose prices are out of date, and shows per chain how many branches and products were loaded and when.
+- Runs unattended: a daily update with a retry, failure alerts as GitHub issues, and no AI calls or paid services.
 
 ## Status
 
