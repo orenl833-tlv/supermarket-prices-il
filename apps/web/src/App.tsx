@@ -115,7 +115,13 @@ export function App() {
           {loading ? "משווה…" : "איפה הכי זול?"}
         </button>
         {error && <p className="warn">{error}</p>}
-        {result && <Results result={result} origin={settings.location} />}
+        {result && (
+          <Results
+            result={result}
+            origin={settings.location}
+            updatedAt={Object.fromEntries(freshness.map((f) => [f.chain, f.updatedAt]))}
+          />
+        )}
       </main>
 
       <footer className="muted small">

@@ -60,6 +60,14 @@ export async function seed(pool: pg.Pool): Promise<void> {
   ]);
 
   await classifyProducts(pool);
+
+  // Freshness: chain "זולה" updated an hour ago, chain "יקרה" three days ago.
+  const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000);
+  await pool.query(
+    `INSERT INTO ingest_runs (store_id, file_name, file_time, status)
+     VALUES ($1, 'PriceFull-e2e-a', $2, 'ok'), ($3, 'PriceFull-e2e-b', $4, 'ok')`,
+    [a.storeId, hoursAgo(1), b.storeId, hoursAgo(72)],
+  );
 }
 
 if (process.argv[1]?.endsWith("seed.ts")) {
