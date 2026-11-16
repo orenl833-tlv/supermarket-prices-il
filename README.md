@@ -9,7 +9,8 @@ Under Israel's food price transparency law, large supermarket chains publish the
 Phase 1 (MVP) in progress: Tel Aviv, two chains (Shufersal, Rami Levy), regular prices, no delivery.
 
 - [x] Repository skeleton
-- [ ] Daily ingest pipeline (download, parse, load)
+- [x] Ingest pipeline: download, parse, quality checks, load (39 Tel Aviv branches, ~45 s)
+- [ ] Scheduled daily run on hosted Postgres
 - [ ] Basket optimization engine
 - [ ] Web app (React + TypeScript)
 - [ ] Public deployment
@@ -30,6 +31,29 @@ Phase 1 (MVP) in progress: Tel Aviv, two chains (Shufersal, Rami Levy), regular 
 db/migrations/      SQL schema migrations, applied in order
 packages/pipeline/  Download, parse and load the chains' price files
 ```
+
+## Running locally
+
+Requires Node 22+ and PostgreSQL 16.
+
+```bash
+npm install
+cp .env.example .env    # then edit the connection strings
+export $(cat .env | xargs)
+npm run migrate -w @spil/pipeline
+npm run ingest -w @spil/pipeline
+npm test                # integration tests run when TEST_DATABASE_URL is set
+```
+
+A first run loads about 190,000 prices (49 MB). Later runs write only the prices that changed, and skip files already processed.
+
+## How a daily run works
+
+1. Download each chain's Stores file and keep the branches in the target cities.
+2. For every branch, find its newest PriceFull file. Skip it if it was already processed, or if a newer file was.
+3. Decode (gzip, UTF-8 or UTF-16), parse, and normalize units to grams, millilitres or units.
+4. Quality checks: drop absurd prices, reject the file if too many lines are unusable or if the list shrank by more than half since the last good run (a cut-off download). A rejected file leaves the previous prices in place.
+5. In one transaction: upsert products (barcoded products are shared across chains), close changed prices, open new ones.
 
 ## Design notes
 
