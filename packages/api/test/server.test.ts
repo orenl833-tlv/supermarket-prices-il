@@ -88,6 +88,7 @@ describe.skipIf(!url)("API", () => {
       chains: ["זולה", "יקרה"],
       minPrice: 7,
       maxPrice: 9,
+      cheapestChain: "זולה",
     });
   });
 

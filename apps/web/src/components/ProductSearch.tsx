@@ -101,7 +101,11 @@ export function ProductSearch({
                   {p.minPrice === p.maxPrice ? money(p.minPrice) : `${money(p.minPrice)}–${money(p.maxPrice)}`}
                   {p.unitPrice && <span className="muted small">{unitPrice(p.unitPrice)}</span>}
                   <span className="muted small">
-                    {p.chains.length === 1 ? `רק ב${p.chains[0]}` : `ב-${p.chains.length} רשתות`}
+                    {p.chains.length === 1
+                      ? `רק ב${p.chains[0]}`
+                      : p.cheapestChain
+                        ? `הכי זול ב${p.cheapestChain}`
+                        : `ב-${p.chains.length} רשתות`}
                   </span>
                 </span>
                 <span className="add" aria-hidden>

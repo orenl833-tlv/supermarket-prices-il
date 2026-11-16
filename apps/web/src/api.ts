@@ -11,6 +11,7 @@ export interface Product {
   chains: string[];
   minPrice: number;
   maxPrice: number;
+  cheapestChain?: string | null;
   category?: string | null;
   unitPrice?: { price: number; per: "liter" | "kg" | "egg" } | null;
 }
