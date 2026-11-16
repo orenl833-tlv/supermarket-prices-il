@@ -3,11 +3,13 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "dev": "npm run dev -w @spil/api & npm run dev -w @spil/web"
   },
   "engines": {
     "node": ">=22"

@@ -1,0 +1,191 @@
+import { describe, expect, it } from "vitest";
+import {
+  combinations,
+  deliveryCost,
+  distanceKm,
+  missingPenalties,
+  optimize,
+  walkingCost,
+  type BasketItem,
+  type PriceTable,
+  type Store,
+} from "../src/index.js";
+
+const store = (id: number, distanceKm = 1): Store => ({ id, name: `store ${id}`, chain: "c", distanceKm });
+const table = (rows: Record<number, Record<number, number>>): PriceTable =>
+  new Map(
+    Object.entries(rows).map(([s, p]) => [Number(s), new Map(Object.entries(p).map(([k, v]) => [Number(k), v]))]),
+  );
+const item = (productId: number, importance: BasketItem["importance"] = "normal", quantity = 1): BasketItem => ({
+  productId,
+  quantity,
+  importance,
+});
+
+describe("optimize, one store", () => {
+  const stores = [store(1), store(2)];
+  const prices = table({
+    1: { 10: 5, 11: 8 },
+    2: { 10: 6, 11: 9 },
+  });
+
+  it("picks the store with the cheapest basket", () => {
+    const basket = [item(10, "normal", 2), item(11)];
+    const [best] = optimize({
+      basket,
+      stores,
+      prices,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: 15,
+    });
+    expect(best?.stops.map((s) => s.store.id)).toEqual([1]);
+    expect(best?.itemsCost).toBe(18); // 2 × 5 + 8
+  });
+
+  it("breaks a price tie by distance", () => {
+    const near = [store(1, 2), store(2, 0.5)];
+    const same = table({ 1: { 10: 5 }, 2: { 10: 5 } });
+    const [best] = optimize({
+      basket: [item(10)],
+      stores: near,
+      prices: same,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: new Map(),
+      missingTripCost: 15,
+    });
+    expect(best?.stops[0]?.store.id).toBe(2);
+  });
+});
+
+describe("optimize, a missing item", () => {
+  // Store 1 is cheap but has no product 12. Store 2 has everything but costs more.
+  const stores = [store(1), store(2)];
+  const prices = table({
+    1: { 10: 100, 11: 100 },
+    2: { 10: 120, 11: 120, 12: 20 },
+  });
+  const run = (basket: BasketItem[], maxStores = 1, extraStopCost = 15) =>
+    optimize({
+      basket,
+      stores,
+      prices,
+      costModel: walkingCost({ extraStopCost }),
+      maxStores,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: extraStopCost,
+    });
+
+  it("charges a missing item its price elsewhere plus a trip to get it", () => {
+    const [best, second] = run([item(10), item(11), item(12)]);
+    expect(best?.stops[0]?.store.id).toBe(1);
+    expect(best?.missing).toEqual([{ productId: 12, importance: "normal", penalty: 20 }]);
+    expect(best?.score).toBe(235); // 200 + 20 for the item + 15 for the trip, still under 260
+    expect(second?.stops[0]?.store.id).toBe(2);
+  });
+
+  it("prefers a complete store once the trip makes the gap too small", () => {
+    const [best] = run([item(10), item(11), item(12)], 1, 50);
+    expect(best?.stops[0]?.store.id).toBe(2); // 260 beats 200 + 20 + 50
+  });
+
+  it("drops a plan where nothing is bought", () => {
+    const plans = run([item(12)]);
+    expect(plans.map((p) => p.stops[0]?.store.id)).toEqual([2]);
+  });
+
+  it("never drops a must-have item", () => {
+    const plans = run([item(10), item(11), item(12, "must")]);
+    expect(plans.every((p) => p.missing.length === 0)).toBe(true);
+    expect(plans[0]?.stops[0]?.store.id).toBe(2);
+  });
+
+  it("splits across two stores only when the saving beats the extra stop", () => {
+    const basket = [item(10), item(11), item(12, "must")];
+    // Two stops: 200 at store 1 + 20 at store 2 + 15 for the extra stop = 235 < 260.
+    const [split] = run(basket, 2, 15);
+    expect(split?.stops.map((s) => s.store.id)).toEqual([1, 2]);
+    expect(split?.score).toBe(235);
+    // With an extra stop worth 50 to the user, one store (260) wins over 270.
+    const [single] = run(basket, 2, 50);
+    expect(single?.stops.map((s) => s.store.id)).toEqual([2]);
+  });
+
+  it("does not charge for a missing optional item", () => {
+    const [best] = run([item(10), item(11), item(12, "optional")]);
+    expect(best?.penaltyCost).toBe(0);
+    expect(best?.score).toBe(200);
+  });
+});
+
+describe("optimize, one plan per chain", () => {
+  it("keeps the nearest branch of each chain and lets other chains through", () => {
+    const branch = (id: number, chain: string, distanceKm: number): Store => ({ id, name: `${id}`, chain, distanceKm });
+    const stores = [branch(1, "A", 0.9), branch(2, "A", 0.3), branch(3, "A", 0.6), branch(4, "B", 1)];
+    const prices = table({ 1: { 10: 5 }, 2: { 10: 5 }, 3: { 10: 5 }, 4: { 10: 6 } });
+    const run = (onePerChain: boolean) =>
+      optimize({
+        basket: [item(10)],
+        stores,
+        prices,
+        costModel: walkingCost({ extraStopCost: 15 }),
+        maxStores: 1,
+        penalties: new Map(),
+        missingTripCost: 15,
+        limit: 2,
+        onePerChain,
+      }).map((p) => p.stops[0]?.store.id);
+    expect(run(false)).toEqual([2, 3]); // two branches of chain A
+    expect(run(true)).toEqual([2, 4]); // nearest A, then chain B
+  });
+});
+
+describe("optimize, delivery", () => {
+  const stores = [store(1), store(2)];
+  const prices = table({
+    1: { 10: 100, 11: 100 },
+    2: { 10: 120, 11: 120, 12: 20 },
+  });
+  const rules = new Map([
+    [1, { fee: 30, minimumOrder: 150 }],
+    [2, { fee: 30, minimumOrder: 150 }],
+  ]);
+
+  it("rejects a split that leaves one order below its minimum", () => {
+    const basket = [item(10), item(11), item(12, "must")];
+    const plans = optimize({
+      basket,
+      stores,
+      prices,
+      costModel: deliveryCost(rules),
+      maxStores: 2,
+      penalties: new Map(),
+      missingTripCost: 30,
+    });
+    // Ordering only product 12 from store 2 (₪20) is below its ₪150 minimum.
+    expect(plans.map((p) => p.stops.map((s) => s.store.id))).toEqual([[2]]);
+    expect(plans[0]?.score).toBe(290); // 260 + one delivery fee
+  });
+});
+
+describe("helpers", () => {
+  it("lists combinations of 1..k, smallest first", () => {
+    expect([...combinations(["a", "b", "c"], 2)]).toEqual([
+      ["a"],
+      ["a", "b"],
+      ["a", "c"],
+      ["b"],
+      ["b", "c"],
+      ["c"],
+    ]);
+  });
+
+  it("computes distances", () => {
+    // Dizengoff Center to Azrieli, about 1.5 km.
+    const d = distanceKm({ lat: 32.0753, lon: 34.7755 }, { lat: 32.0742, lon: 34.7918 });
+    expect(d).toBeGreaterThan(1.4);
+    expect(d).toBeLessThan(1.7);
+  });
+});
