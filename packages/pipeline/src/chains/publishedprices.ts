@@ -6,7 +6,7 @@ import { newest, type ChainSource } from "./types.js";
 /**
  * url.publishedprices.co.il is a shared portal used by several chains.
  * Each chain publishes a username for public access, with an empty password.
- * Only use usernames a chain publishes itself.
+ * Only use usernames published by the chain or by the Consumer Protection Authority.
  */
 const BASE = "https://url.publishedprices.co.il";
 
@@ -14,6 +14,7 @@ export function publishedPricesChain(opts: {
   code: string;
   name: string;
   username: string;
+  extraStoreCodes?: string[];
 }): ChainSource {
   let session: Session | null = null;
   const getSession = async () => (session ??= await login(opts.username));
@@ -25,6 +26,7 @@ export function publishedPricesChain(opts: {
   return {
     code: opts.code,
     name: opts.name,
+    extraStoreCodes: opts.extraStoreCodes,
 
     async latestStoresFile() {
       const file = newest(await (await getSession()).list(`Stores${opts.code}`));
@@ -109,8 +111,27 @@ async function login(username: string): Promise<Session> {
   };
 }
 
+// Usernames below are published by each chain on its price-transparency page
+// and by the Consumer Protection Authority (gov.il/he/pages/cpfta_prices_regulations).
+
 export const ramiLevy = publishedPricesChain({
   code: "7290058140886",
   name: "רמי לוי",
   username: "RamiLevi",
+});
+
+/** Dor Alon: AM:PM city stores, plus Alonit mini-markets at gas stations. */
+export const doralon = publishedPricesChain({
+  code: "7290492000005",
+  name: "AM:PM",
+  username: "doralon",
+});
+
+export const yochananof = publishedPricesChain({
+  code: "7290803800003",
+  name: "יוחננוף",
+  username: "Yohananof",
+  // City is 0 for every Yochananof branch, so Tel Aviv branches are listed by hand:
+  // 027 Yad Eliyahu (Yigal Alon 57), 032 Ben Tsvi, 035 Nahalat Yitshak, 054 Ahad Ha'am.
+  extraStoreCodes: ["27", "32", "35", "54"],
 });

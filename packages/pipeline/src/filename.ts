@@ -14,7 +14,7 @@ export interface FileNameInfo {
 }
 
 const PATTERN =
-  /^([A-Za-z]+)(\d{13})-(\d+)(?:-(\d+))?-(\d{8})-(\d{4,6})(?:\.\w+)*$/;
+  /^([A-Za-z]+)(\d{13})-(\d+)(?:-(\d+))?-(\d{8})-(\d{2,6})(?:\.\w+)*$/;
 
 export function parseFileName(name: string): FileNameInfo | null {
   const m = PATTERN.exec(name);

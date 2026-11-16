@@ -45,6 +45,11 @@ describe("parseFileName", () => {
     expect(info).toMatchObject({ kind: "Stores", storeCode: null });
   });
 
+  it("accepts a shortened time (Shufersal sometimes writes HHM)", () => {
+    const info = parseFileName("Stores7290027600007-000-20261116-020.gz");
+    expect(info?.time.toISOString()).toBe("2026-11-16T00:00:00.000Z"); // 02:00 Israel time
+  });
+
   it("rejects other names", () => {
     expect(parseFileName("readme.txt")).toBeNull();
   });
@@ -129,5 +134,19 @@ describe("Shufersal listing", () => {
       "PriceFull7290027600007-001-001-20261115-030000.gz",
     ]);
     expect(files[0]?.url).toContain("&sig=abc&");
+  });
+});
+
+describe("newest", () => {
+  it("compares the time in the name, not the name as text", async () => {
+    const { newest } = await import("../src/chains/types.js");
+    const file = (name: string) => ({ name, url: name });
+    expect(
+      newest([
+        file("PriceFull7290803800003-000-027-20261116-004031.gz"),
+        file("PriceFull7290803800003-999-027-20261115-004031.gz"),
+        file("PriceFull7290803800003-7999-202405211349.gz"), // legacy format, ignored
+      ])?.name,
+    ).toBe("PriceFull7290803800003-000-027-20261116-004031.gz");
   });
 });

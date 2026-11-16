@@ -6,10 +6,10 @@ Under Israel's food price transparency law, large supermarket chains publish the
 
 ## Status
 
-Phase 1 (MVP) in progress: Tel Aviv, two chains (Shufersal, Rami Levy), regular prices, no delivery.
+Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 74 branches.
 
 - [x] Repository skeleton
-- [x] Ingest pipeline: download, parse, quality checks, load (39 Tel Aviv branches, ~45 s)
+- [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
 - [ ] Scheduled daily run on hosted Postgres
 - [ ] Basket optimization engine
 - [ ] Web app (React + TypeScript)
@@ -63,7 +63,15 @@ A first run loads about 190,000 prices (49 MB). Later runs write only the prices
 
 ## Data sources
 
-| Chain | Portal | Access |
-| --- | --- | --- |
-| Shufersal | prices.shufersal.co.il | Public |
-| Rami Levy | url.publishedprices.co.il | Public username, no password |
+Links and public usernames come from each chain's price-transparency page and the [Consumer Protection Authority](https://www.gov.il/he/pages/cpfta_prices_regulations).
+
+| Chain | Tel Aviv branches | Portal | Access |
+| --- | --- | --- | --- |
+| Shufersal | 33 | prices.shufersal.co.il | Public |
+| AM:PM (Dor Alon) | 31 | url.publishedprices.co.il | Public username, no password |
+| Rami Levy | 6 | url.publishedprices.co.il | Public username, no password |
+| Yochananof | 4 | url.publishedprices.co.il | Public username, no password |
+| Carrefour | 23 | prices.carrefour.co.il | Public, Israeli IPs only |
+| Victory | 8 | laibcatalog.co.il | Public, Israeli IPs only |
+
+Branches are matched to the city by CBS locality code, by city name, or, when a chain leaves the city empty (Yochananof), by a hand-checked list of branch codes.
