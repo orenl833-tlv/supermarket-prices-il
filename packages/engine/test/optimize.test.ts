@@ -255,3 +255,32 @@ describe("optimize, substitutes", () => {
     expect(best?.stops[0]?.lines[0]?.substituteFor).toBeUndefined();
   });
 });
+
+describe("optimize, any brand", () => {
+  // Store 1 sells the exact product (10) for 15 and a close substitute for 12.
+  const stores = [store(1)];
+  const prices = table({ 1: { 10: 15, 13: 12 } });
+  const substitutes = new Map([
+    [1, new Map([[10, { productId: 13, quantity: 1, unitPrice: 12, lineTotal: 12, penalty: 0 }]])],
+  ]);
+  const run = (anyBrand: boolean) =>
+    optimize({
+      basket: [{ ...item(10), anyBrand }],
+      stores,
+      prices,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: new Map(),
+      missingTripCost: 15,
+      substitutes,
+    })[0]?.stops[0]?.lines[0];
+
+  it("takes the cheaper substitute even where the exact product is sold", () => {
+    expect(run(true)).toMatchObject({ productId: 13, lineTotal: 12, substituteFor: 10 });
+  });
+
+  it("sticks to the exact product when 'any brand' is off", () => {
+    expect(run(false)).toMatchObject({ productId: 10, lineTotal: 15 });
+    expect(run(false)?.substituteFor).toBeUndefined();
+  });
+});

@@ -67,6 +67,7 @@ export function buildServer(
                   productId: { type: "integer" },
                   quantity: { type: "number", exclusiveMinimum: 0, maximum: 100 },
                   importance: { enum: ["must", "normal", "optional"], default: "normal" },
+                  anyBrand: { type: "boolean", default: false },
                 },
               },
             },

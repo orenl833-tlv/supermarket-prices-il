@@ -108,20 +108,21 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
           line: { productId: item.productId, quantity: item.quantity, unitPrice: price, lineTotal: money(price * item.quantity) },
           penalty: 0,
         };
-      } else {
-        const sub = substitutes?.get(store.id)?.get(item.productId);
-        if (sub) {
-          option = {
-            line: {
-              productId: sub.productId,
-              quantity: sub.quantity,
-              unitPrice: sub.unitPrice,
-              lineTotal: sub.lineTotal,
-              substituteFor: item.productId,
-            },
-            penalty: sub.penalty,
-          };
-        }
+      }
+      // A substitute is an option where the exact product is missing, or anywhere
+      // for an "any brand" item; then it wins only if it is cheaper overall.
+      const sub = price === undefined || item.anyBrand ? substitutes?.get(store.id)?.get(item.productId) : undefined;
+      if (sub && (!option || sub.lineTotal + sub.penalty < option.line.lineTotal)) {
+        option = {
+          line: {
+            productId: sub.productId,
+            quantity: sub.quantity,
+            unitPrice: sub.unitPrice,
+            lineTotal: sub.lineTotal,
+            substituteFor: item.productId,
+          },
+          penalty: sub.penalty,
+        };
       }
       if (!option) continue;
       const cost = option.line.lineTotal + option.penalty;

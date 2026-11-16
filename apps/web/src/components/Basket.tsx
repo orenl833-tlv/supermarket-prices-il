@@ -35,7 +35,7 @@ export function Basket({
         </button>
       </div>
       <ul className="basket">
-        {entries.map(({ product, quantity, importance }) => {
+        {entries.map(({ product, quantity, importance, anyBrand }) => {
           const step = product.isWeighted ? 0.5 : 1;
           return (
             <li key={product.id} className="basket-item">
@@ -66,6 +66,16 @@ export function Basket({
                     +
                   </button>
                 </div>
+                {product.category && (
+                  <label className="check small inline" title={`כל ${product.category} דומה מתאים, והזול ייבחר`}>
+                    <input
+                      type="checkbox"
+                      checked={anyBrand ?? false}
+                      onChange={(e) => onChange(product.id, { anyBrand: e.target.checked })}
+                    />
+                    גם מותג אחר
+                  </label>
+                )}
                 <div className="segmented" role="radiogroup" aria-label="חשיבות">
                   {IMPORTANCE.map((opt) => (
                     <button

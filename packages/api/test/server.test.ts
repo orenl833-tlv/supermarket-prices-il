@@ -153,6 +153,41 @@ describe.skipIf(!url)("API", () => {
     expect(body.unavailable).toEqual([]);
   });
 
+  it("with 'any brand', takes another brand where it is cheaper even if the exact one is sold", async () => {
+    // Chain B sells only its own eggs (13); chain A sells A's eggs (12). Ask for B's eggs.
+    const [eggsB] = await search("ביצים 12 יח גדול");
+    const [bread] = await search("לחם");
+    const compare = async (anyBrand: boolean) =>
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/compare",
+          payload: {
+            ...center,
+            radiusKm: 2,
+            items: [
+              { productId: eggsB.id, quantity: 1, anyBrand },
+              { productId: bread.id, quantity: 1 },
+            ],
+          },
+        })
+      ).json();
+    const cheapStore = (body: { plans: Array<{ stops: Array<{ store: { name: string }; lines: Array<{ productId: number; substituteFor?: number }> }> }> }) =>
+      body.plans.find((p) => p.stops[0]?.store.name === "זולה מרכז")!;
+    // Store A lacks B's eggs either way, so it gets A's eggs as a substitute...
+    expect(cheapStore(await compare(false)).stops[0]!.lines.some((l) => l.substituteFor === eggsB.id)).toBe(true);
+    // ...and with "any brand" there is no base penalty.
+    const anyBrand = await compare(true);
+    expect(cheapStore(anyBrand)).toMatchObject({ substitutionCost: 0 });
+  });
+
+  it("shows the category and price per unit in search results", async () => {
+    const [eggs] = await search("ביצים L ארוזות");
+    expect(eggs).toMatchObject({ category: "ביצים", unitPrice: { price: 1, per: "egg" } }); // 12 / 12 eggs
+    const [milk] = await search("חלב 3% שומן");
+    expect(milk.unitPrice).toEqual({ price: 6.5, per: "liter" }); // cheapest 6.50 per 1 litre
+  });
+
   it("rejects bad input", async () => {
     const res = await app.inject({
       method: "POST",

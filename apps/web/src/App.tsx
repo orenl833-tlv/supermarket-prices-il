@@ -44,7 +44,12 @@ export function App() {
     try {
       setResult(
         await compare({
-          items: basket.map((e) => ({ productId: e.product.id, quantity: e.quantity, importance: e.importance })),
+          items: basket.map((e) => ({
+            productId: e.product.id,
+            quantity: e.quantity,
+            importance: e.importance,
+            anyBrand: e.anyBrand ?? false,
+          })),
           lat: settings.location.lat,
           lon: settings.location.lon,
           radiusKm: settings.radiusKm,
