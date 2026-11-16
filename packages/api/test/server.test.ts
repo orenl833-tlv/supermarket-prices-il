@@ -132,3 +132,21 @@ describe.skipIf(!url)("API", () => {
     expect(res.json().chains.map((c: { chain: string }) => c.chain)).toEqual(["זולה", "יקרה"]);
   });
 });
+
+describe("serving the web app", () => {
+  it("serves index.html for app routes and 404 JSON for unknown API routes", async () => {
+    const { mkdtempSync, writeFileSync } = await import("node:fs");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const root = mkdtempSync(join(tmpdir(), "web-"));
+    writeFileSync(join(root, "index.html"), "<!doctype html><title>app</title>");
+    // Static routes need no database.
+    const web = buildServer({} as pg.Pool, { webRoot: root });
+    expect((await web.inject({ url: "/" })).body).toContain("<title>app</title>");
+    expect((await web.inject({ url: "/some/page" })).body).toContain("<title>app</title>");
+    const api404 = await web.inject({ url: "/api/nope" });
+    expect(api404.statusCode).toBe(404);
+    expect(api404.json()).toEqual({ error: "Not found" });
+    await web.close();
+  });
+});
