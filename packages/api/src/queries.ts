@@ -1,4 +1,4 @@
-import { bestSubstitute, type PricedProduct, type ProductInfo } from "@spil/catalog";
+import { bestSubstitute, classify, type PricedProduct, type ProductInfo } from "@spil/catalog";
 import { distanceKm, type BasketItem, type PriceTable, type Store, type Substitute } from "@spil/engine";
 import type pg from "pg";
 
@@ -14,6 +14,10 @@ export interface ProductHit {
   chains: string[];
   minPrice: number;
   maxPrice: number;
+  /** Substitute category, when the product is in one: "any brand" is possible. */
+  category: string | null;
+  /** The lowest price per litre, kg or egg, for comparing pack sizes. */
+  unitPrice: { price: number; per: "liter" | "kg" | "egg" } | null;
 }
 
 /**
@@ -32,13 +36,15 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
     `SELECT p.id, p.name, p.manufacturer, p.quantity::float AS quantity, p.unit, p.is_weighted,
             count(DISTINCT pc.store_id)::int AS store_count,
             array_agg(DISTINCT c.name ORDER BY c.name) AS chains,
-            min(pc.price)::float AS min_price, max(pc.price)::float AS max_price
+            min(pc.price)::float AS min_price, max(pc.price)::float AS max_price,
+            cat.name AS category
      FROM products p
+     LEFT JOIN categories cat ON cat.id = p.category_id
      JOIN price_changes pc ON pc.product_id = p.id AND pc.valid_to IS NULL
      JOIN stores s ON s.id = pc.store_id
      JOIN chains c ON c.id = s.chain_id
      WHERE ${isBarcode ? "p.barcode = $1" : "p.name ILIKE ALL ($1::text[])"}
-     GROUP BY p.id
+     GROUP BY p.id, cat.name
      ORDER BY p.name ILIKE $3 DESC, count(DISTINCT c.id) DESC, store_count DESC, length(p.name), p.name
      LIMIT $2`,
     [isBarcode ? q : words, limit, `${escapeLike(q.split(/\s+/)[0]!)}%`],
@@ -54,7 +60,30 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
     chains: r.chains,
     minPrice: r.min_price,
     maxPrice: r.max_price,
+    category: r.category,
+    unitPrice: unitPriceOf(
+      { id: r.id, name: r.name, quantity: r.quantity, unit: r.unit, isWeighted: r.is_weighted },
+      r.min_price,
+    ),
   }));
+}
+
+/**
+ * Price per litre, kg or egg. Uses the catalog's size when the product is in
+ * a category (it reads egg counts from the name), else the normalized
+ * quantity from the files. Null when the size is unknown.
+ */
+export function unitPriceOf(product: ProductInfo, price: number): ProductHit["unitPrice"] {
+  const round = (n: number) => Math.round(n * 100) / 100;
+  if (product.isWeighted) return { price: round(price), per: "kg" };
+  const size = classify(product)?.size;
+  const amount = size?.amount ?? product.quantity;
+  const unit = size?.unit ?? product.unit;
+  if (!amount || amount <= 0) return null;
+  if (unit === "ml") return { price: round((price / amount) * 1000), per: "liter" };
+  if (unit === "g") return { price: round((price / amount) * 1000), per: "kg" };
+  if (unit === "egg") return { price: round(price / amount), per: "egg" };
+  return null;
 }
 
 export interface StoreWithAddress extends Store {
@@ -116,7 +145,8 @@ export async function currentPrices(
 }
 
 /**
- * For every store that lacks a basket product, its best close substitute.
+ * For every store that lacks a basket product, its best close substitute;
+ * for "any brand" items, in every store.
  *
  * One query loads the current prices of all products in the basket's
  * categories in the candidate stores; @spil/catalog then picks and prices the
@@ -153,12 +183,14 @@ export async function findSubstitutes(
     cats.get(c.category_id)!.push(c);
   }
 
-  const quantityOf = new Map(basket.map((i) => [i.productId, i.quantity]));
+  const itemOf = new Map(basket.map((i) => [i.productId, i]));
   for (const storeId of storeIds) {
     for (const original of originals as Array<ProductInfo & { category_id: number }>) {
-      if (prices.get(storeId)?.has(original.id)) continue; // the exact product is there
+      const item = itemOf.get(original.id)!;
+      // Only where the exact product is missing, unless the user chose "any brand".
+      if (prices.get(storeId)?.has(original.id) && !item.anyBrand) continue;
       const pool = byStore.get(storeId)?.get(original.category_id) ?? [];
-      const choice = bestSubstitute(original, quantityOf.get(original.id)!, pool);
+      const choice = bestSubstitute(original, item.quantity, pool, { anyBrand: item.anyBrand });
       if (!choice) continue;
       if (!table.has(storeId)) table.set(storeId, new Map());
       table.get(storeId)!.set(original.id, choice);

@@ -5,6 +5,11 @@ export interface BasketItem {
   productId: number;
   quantity: number; // units, or kilograms for weighted products
   importance: Importance;
+  /**
+   * "Any brand": the user is fine with a close substitute even where the
+   * exact product is sold, so the cheaper of the two is taken in each store.
+   */
+  anyBrand?: boolean;
 }
 
 export interface Store {

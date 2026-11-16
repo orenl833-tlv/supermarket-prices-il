@@ -11,12 +11,16 @@ export interface Product {
   chains: string[];
   minPrice: number;
   maxPrice: number;
+  category?: string | null;
+  unitPrice?: { price: number; per: "liter" | "kg" | "egg" } | null;
 }
 
 export interface BasketEntry {
   product: Product;
   quantity: number;
   importance: Importance;
+  /** Another brand of the same kind is fine. */
+  anyBrand?: boolean;
 }
 
 export interface Store {
@@ -58,7 +62,7 @@ export interface CompareResult {
 }
 
 export interface CompareRequest {
-  items: Array<{ productId: number; quantity: number; importance: Importance }>;
+  items: Array<{ productId: number; quantity: number; importance: Importance; anyBrand: boolean }>;
   lat: number;
   lon: number;
   radiusKm: number;

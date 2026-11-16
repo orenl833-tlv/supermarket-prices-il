@@ -160,6 +160,14 @@ describe("bestSubstitute", () => {
     expect(choice).toMatchObject({ quantity: 1.5, lineTotal: 14.85 });
   });
 
+  it("drops the base penalty for 'any brand', but still charges differences", () => {
+    const wanted = p("ביצים L ארוזות 12 י");
+    const sameKind = [priced("ביצים 12 יח גדול L", 12)];
+    const otherSize = [priced("ביצים 12 יח בינוני M", 11)];
+    expect(bestSubstitute(wanted, 1, sameKind, { anyBrand: true })?.penalty).toBe(0);
+    expect(bestSubstitute(wanted, 1, otherSize, { anyBrand: true })?.penalty).toBe(1); // size L vs M
+  });
+
   it("returns null for a product outside the taxonomy", () => {
     expect(bestSubstitute(p("במבה 80 גרם"), 1, [priced("במבה 60 גרם", 4)])).toBeNull();
   });

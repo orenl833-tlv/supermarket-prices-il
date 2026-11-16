@@ -10,8 +10,16 @@ export function size(quantity: number | null, unit: string | null): string {
   if (!quantity || !unit) return "";
   if (unit === "g") return quantity >= 1000 ? `${quantity / 1000} ק"ג` : `${quantity} גרם`;
   if (unit === "ml") return quantity >= 1000 ? `${quantity / 1000} ליטר` : `${quantity} מ"ל`;
-  if (unit === "unit") return `${quantity} יח'`;
+  // "1 unit" usually means the chain did not fill it in (a 12-egg carton is listed as 1).
+  if (unit === "unit") return quantity > 1 ? `${quantity} יח'` : "";
   return "";
+}
+
+const PER = { liter: "לליטר", kg: 'לק"ג', egg: "לביצה" } as const;
+
+/** "₪6.50 לליטר" */
+export function unitPrice(u: { price: number; per: keyof typeof PER } | null | undefined): string {
+  return u ? `${money(u.price)} ${PER[u.per]}` : "";
 }
 
 /** "לפני 3 שעות" style age of a timestamp. */

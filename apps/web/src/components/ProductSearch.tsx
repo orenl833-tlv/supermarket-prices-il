@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { searchProducts, type Product } from "../api";
-import { money, size } from "../format";
+import { money, size, unitPrice } from "../format";
 
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
 export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void; inBasket: Set<number> }) {
@@ -62,6 +62,7 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
                 </span>
                 <span className="result-meta">
                   {p.minPrice === p.maxPrice ? money(p.minPrice) : `${money(p.minPrice)}–${money(p.maxPrice)}`}
+                  {p.unitPrice && <span className="muted small">{unitPrice(p.unitPrice)}</span>}
                   <span className="muted small">
                     {p.chains.length === 1 ? `רק ב${p.chains[0]}` : `ב-${p.chains.length} רשתות`}
                   </span>

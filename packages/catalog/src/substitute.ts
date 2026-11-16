@@ -32,11 +32,15 @@ const UNKNOWN_SIZE_PENALTY = 1;
  * asked for (12 eggs from 18-packs means one pack of 18), or the weight for
  * produce sold per kg. The penalty adds a little for each attribute that
  * differs. The cheapest cost + penalty wins.
+ *
+ * With `anyBrand` the user has said another brand is fine, so the base
+ * penalty is dropped; differences in attributes are still charged.
  */
 export function bestSubstitute(
   original: ProductInfo,
   quantity: number,
   candidates: PricedProduct[],
+  { anyBrand = false }: { anyBrand?: boolean } = {},
 ): SubstituteChoice | null {
   const o = classify(original);
   if (!o) return null;
@@ -52,7 +56,9 @@ export function bestSubstitute(
     const c = classify(candidate);
     if (!c || c.category.key !== o.category.key) continue;
 
-    let penalty = BASE_PENALTY + (sizeGuessed ? UNKNOWN_SIZE_PENALTY : 0);
+    // "Any brand" means another brand is fine: no base penalty, but real
+    // differences (size, type, fat) still count.
+    let penalty = (anyBrand ? 0 : BASE_PENALTY) + (sizeGuessed ? UNKNOWN_SIZE_PENALTY : 0);
     const differences: string[] = [];
     let excluded = false;
     for (const attr of o.category.attributes) {
