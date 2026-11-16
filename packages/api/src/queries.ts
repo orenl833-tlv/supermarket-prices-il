@@ -1,4 +1,4 @@
-import { bestSubstitute, classify, type PricedProduct, type ProductInfo } from "@spil/catalog";
+import { bestSubstitute, categoryByKey, classify, type PricedProduct, type ProductInfo } from "@spil/catalog";
 import { distanceKm, type BasketItem, type PriceTable, type Store, type Substitute } from "@spil/engine";
 import type pg from "pg";
 
@@ -66,6 +66,56 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
       r.min_price,
     ),
   }));
+}
+
+/**
+ * When the search text names a substitute category ("ביצים", "חלב"), the
+ * product to stand for "any of these". The UI adds it with "any brand" on, so
+ * the engine then picks the cheapest close product in each store.
+ *
+ * The query must point to one category: "שמנת" matches three (sour, cooking,
+ * whipping), so it gets no suggestion. The product is the most widely sold one
+ * that matches what a shopper means by the bare name (the category's
+ * defaults: "חלב" is 3% and not lactose-free).
+ */
+export async function categorySuggestion(
+  db: pg.Pool,
+  query: string,
+): Promise<{ category: string; product: ProductHit } | null> {
+  const q = query.trim().replace(/\s+/g, " ");
+  if (q.length < 2) return null;
+  const { rows: cats } = await db.query<{ id: number; key: string; name: string }>(
+    "SELECT id, key, name FROM categories WHERE name = $1 OR name LIKE $2",
+    [q, `${escapeLike(q)} %`],
+  );
+  const category = cats.find((c) => c.name === q) ?? (cats.length === 1 ? cats[0] : undefined);
+  if (!category) return null;
+
+  const { rows: candidates } = await db.query(
+    `SELECT p.id, p.name, p.quantity::float AS quantity, p.unit, p.is_weighted AS "isWeighted"
+     FROM products p JOIN price_changes pc ON pc.product_id = p.id AND pc.valid_to IS NULL
+     WHERE p.category_id = $1
+     GROUP BY p.id
+     ORDER BY count(DISTINCT pc.store_id) DESC, min(pc.price)
+     LIMIT 50`,
+    [category.id],
+  );
+  const def = categoryByKey(category.key);
+  const defaults = def?.defaults ?? {};
+  const matchesDefaults = (p: ProductInfo) => {
+    const attrs = classify(p)?.attributes ?? {};
+    return Object.entries(defaults).every(([k, v]) => attrs[k] === v);
+  };
+  // A standard pack beats a half portion when the category has a typical size.
+  const typicalSize = (p: ProductInfo) => !def?.typicalSize || classify(p)?.size?.amount === def.typicalSize;
+  const products = candidates as ProductInfo[];
+  const chosen =
+    products.find((p) => matchesDefaults(p) && typicalSize(p)) ?? products.find(matchesDefaults) ?? products[0];
+  if (!chosen) return null;
+
+  // Reuse the search for the same fields (chains, unit price) on this product.
+  const hit = (await searchProducts(db, chosen.name, 50)).find((h) => h.id === chosen.id);
+  return hit ? { category: category.name, product: hit } : null;
 }
 
 /**

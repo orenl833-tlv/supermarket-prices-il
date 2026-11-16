@@ -1,11 +1,18 @@
 import { useEffect, useState } from "react";
-import { searchProducts, type Product } from "../api";
+import { searchProducts, type Product, type SearchResult } from "../api";
 import { money, size, unitPrice } from "../format";
 
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
-export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void; inBasket: Set<number> }) {
+export function ProductSearch({
+  onAdd,
+  inBasket,
+}: {
+  onAdd: (p: Product, options?: { anyBrand: boolean }) => void;
+  inBasket: Set<number>;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
+  const [suggestion, setSuggestion] = useState<SearchResult["suggestion"]>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -13,6 +20,7 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
+      setSuggestion(null);
       return;
     }
     const controller = new AbortController();
@@ -20,11 +28,15 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
       setLoading(true);
       setFailed(false);
       searchProducts(q, controller.signal)
-        .then(setResults)
+        .then((r) => {
+          setResults(r.products);
+          setSuggestion(r.suggestion);
+        })
         .catch((err: unknown) => {
           // An aborted request was replaced by a newer one; anything else is a real failure.
           if (!(err instanceof DOMException && err.name === "AbortError")) {
             setResults([]);
+            setSuggestion(null);
             setFailed(true);
           }
         })
@@ -51,6 +63,23 @@ export function ProductSearch({ onAdd, inBasket }: { onAdd: (p: Product) => void
         autoComplete="off"
       />
       {loading && <p className="muted small">מחפש…</p>}
+      {suggestion && !inBasket.has(suggestion.product.id) && (
+        <button
+          className="suggestion"
+          onClick={() => {
+            onAdd(suggestion.product, { anyBrand: true });
+            setQuery("");
+          }}
+        >
+          <span>
+            <strong>{suggestion.category}, כל מותג</strong>
+            <span className="muted small"> · הזול בכל סניף, למשל {suggestion.product.name}</span>
+          </span>
+          <span className="add" aria-hidden>
+            +
+          </span>
+        </button>
+      )}
       {results.length > 0 && (
         <ul className="results" aria-label="תוצאות חיפוש">
           {results.map((p) => (

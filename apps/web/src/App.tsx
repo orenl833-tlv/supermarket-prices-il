@@ -33,8 +33,8 @@ export function App() {
 
   const inBasket = useMemo(() => new Set(basket.map((e) => e.product.id)), [basket]);
 
-  const add = (product: Product) =>
-    setBasket((b) => [...b, { product, quantity: 1, importance: "normal" }]);
+  const add = (product: Product, options?: { anyBrand: boolean }) =>
+    setBasket((b) => [...b, { product, quantity: 1, importance: "normal", anyBrand: options?.anyBrand ?? false }]);
   const change = (id: number, patch: Partial<BasketEntry>) =>
     setBasket((b) => b.map((e) => (e.product.id === id ? { ...e, ...patch } : e)));
   const remove = (id: number) => setBasket((b) => b.filter((e) => e.product.id !== id));

@@ -70,10 +70,17 @@ export interface CompareRequest {
   extraStopCost: number;
 }
 
-export async function searchProducts(q: string, signal?: AbortSignal): Promise<Product[]> {
+export interface SearchResult {
+  products: Product[];
+  /** When the query names a category ("ביצים"): a product to add as "any brand". */
+  suggestion: { category: string; product: Product } | null;
+}
+
+export async function searchProducts(q: string, signal?: AbortSignal): Promise<SearchResult> {
   const res = await fetch(`/api/products?q=${encodeURIComponent(q)}`, { signal });
   if (!res.ok) throw new Error(`search failed: ${res.status}`);
-  return (await res.json()).products;
+  const body = await res.json();
+  return { products: body.products, suggestion: body.suggestion ?? null };
 }
 
 export async function compare(body: CompareRequest): Promise<CompareResult> {
