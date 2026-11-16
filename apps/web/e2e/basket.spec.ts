@@ -100,3 +100,16 @@ test("warns when a chain's prices are out of date", async ({ page }) => {
   await expect(stale).toContainText("המחירים של יקרה עודכנו לפני 3 ימים");
   await expect(fresh).not.toContainText("עודכנו");
 });
+
+test("copies the chosen plan as a shopping list", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  // Force the clipboard path: headless Chromium may expose a share sheet.
+  await page.evaluate(() => Object.defineProperty(navigator, "share", { value: undefined }));
+  await add(page, "חלב");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  await page.locator(".plan.best").getByRole("button", { name: "שליחת רשימת קנייה" }).click();
+  await expect(page.locator(".plan.best").getByRole("button", { name: "הרשימה הועתקה" })).toBeVisible();
+  const text = await page.evaluate(() => navigator.clipboard.readText());
+  expect(text).toContain("🛒 זולה זולה דיזנגוף");
+  expect(text).toContain('סה"כ');
+});

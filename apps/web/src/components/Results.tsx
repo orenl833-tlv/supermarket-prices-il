@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { CompareResult, Plan } from "../api";
 import { age, distance, isStale, money } from "../format";
+import { planText } from "../shoppingList";
 import { ResultsMap } from "./ResultsMap";
 
 export function Results({
@@ -53,6 +54,7 @@ function PlanCard({
   updatedAt: Record<string, string | null>;
 }) {
   const [open, setOpen] = useState(best);
+  const [copied, setCopied] = useState(false);
   const stores = plan.stops.map((s) => `${s.store.chain} ${s.store.name}`).join(" + ");
   const substitutes = plan.stops.flatMap((s) => s.lines).filter((l) => l.substituteFor !== undefined);
   const staleChains = [...new Set(plan.stops.map((s) => s.store.chain))].filter((c) => isStale(updatedAt[c]));
@@ -100,9 +102,29 @@ function PlanCard({
         </p>
       )}
 
-      <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>
-        {open ? "הסתרת פירוט" : "פירוט לפי סופר"}
-      </button>
+      <div className="row gap">
+        <button className="link" onClick={() => setOpen(!open)} aria-expanded={open}>
+          {open ? "הסתרת פירוט" : "פירוט לפי סופר"}
+        </button>
+        <button
+          className="link"
+          onClick={async () => {
+            // The phone's share sheet where there is one, otherwise the clipboard.
+            const text = planText(plan, name);
+            try {
+              if (navigator.share) await navigator.share({ title: "רשימת קניות", text });
+              else {
+                await navigator.clipboard.writeText(text);
+                setCopied(true);
+              }
+            } catch {
+              /* share sheet closed or clipboard blocked */
+            }
+          }}
+        >
+          {copied ? "הרשימה הועתקה" : "שליחת רשימת קנייה"}
+        </button>
+      </div>
       {open &&
         plan.stops.map((stop) => (
           <div key={stop.store.id} className="stop">
