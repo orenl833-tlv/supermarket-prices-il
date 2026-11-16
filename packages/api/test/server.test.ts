@@ -234,7 +234,8 @@ describe.skipIf(!url)("API", () => {
     const res = await app.inject({ url: "/api/status" });
     expect(res.json().chains).toEqual([
       // No ingest_runs rows in this fixture, so no update time yet.
-      { chain: "זולה", updatedAt: null, branches: 2, products: 3 },
+      // זולה: milk, bread, eggs, and the cottage cheese added on its far branch above.
+      { chain: "זולה", updatedAt: null, branches: 2, products: 4 },
       { chain: "יקרה", updatedAt: null, branches: 1, products: 4 },
     ]);
   });
