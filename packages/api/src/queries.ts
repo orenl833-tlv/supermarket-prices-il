@@ -1,4 +1,5 @@
-import { distanceKm, type PriceTable, type Store } from "@spil/engine";
+import { bestSubstitute, type PricedProduct, type ProductInfo } from "@spil/catalog";
+import { distanceKm, type BasketItem, type PriceTable, type Store, type Substitute } from "@spil/engine";
 import type pg from "pg";
 
 export interface ProductHit {
@@ -84,7 +85,8 @@ export async function storesNear(
       id: r.id,
       name: r.name,
       chain: r.chain,
-      address: r.address,
+      // Some chains publish placeholders instead of an address.
+      address: /^(unknown|לא ידוע|0)?$/i.test(r.address?.trim() ?? "") ? null : r.address,
       lat: r.lat,
       lon: r.lon,
       distanceKm: Math.round(distanceKm(point, r) * 100) / 100,
@@ -109,6 +111,58 @@ export async function currentPrices(
   for (const r of rows) {
     if (!table.has(r.store_id)) table.set(r.store_id, new Map());
     table.get(r.store_id)!.set(r.product_id, r.price);
+  }
+  return table;
+}
+
+/**
+ * For every store that lacks a basket product, its best close substitute.
+ *
+ * One query loads the current prices of all products in the basket's
+ * categories in the candidate stores; @spil/catalog then picks and prices the
+ * substitute (whole packs, attribute penalties) per store. Products outside
+ * the taxonomy get no substitutes.
+ */
+export async function findSubstitutes(
+  db: pg.Pool,
+  basket: BasketItem[],
+  storeIds: number[],
+  prices: PriceTable,
+): Promise<Map<number, Map<number, Substitute>>> {
+  const table = new Map<number, Map<number, Substitute>>();
+  const { rows: originals } = await db.query(
+    `SELECT id, name, quantity::float AS quantity, unit, is_weighted AS "isWeighted", category_id
+     FROM products WHERE id = ANY($1::int[]) AND category_id IS NOT NULL`,
+    [basket.map((i) => i.productId)],
+  );
+  if (originals.length === 0) return table;
+
+  const { rows: candidates } = await db.query(
+    `SELECT pc.store_id, p.id, p.name, p.quantity::float AS quantity, p.unit,
+            p.is_weighted AS "isWeighted", p.category_id, pc.price::float AS price
+     FROM price_changes pc JOIN products p ON p.id = pc.product_id
+     WHERE pc.valid_to IS NULL AND pc.store_id = ANY($1::int[]) AND p.category_id = ANY($2::int[])`,
+    [storeIds, [...new Set(originals.map((o) => o.category_id))]],
+  );
+  // store -> category -> priced products
+  const byStore = new Map<number, Map<number, PricedProduct[]>>();
+  for (const c of candidates) {
+    if (!byStore.has(c.store_id)) byStore.set(c.store_id, new Map());
+    const cats = byStore.get(c.store_id)!;
+    if (!cats.has(c.category_id)) cats.set(c.category_id, []);
+    cats.get(c.category_id)!.push(c);
+  }
+
+  const quantityOf = new Map(basket.map((i) => [i.productId, i.quantity]));
+  for (const storeId of storeIds) {
+    for (const original of originals as Array<ProductInfo & { category_id: number }>) {
+      if (prices.get(storeId)?.has(original.id)) continue; // the exact product is there
+      const pool = byStore.get(storeId)?.get(original.category_id) ?? [];
+      const choice = bestSubstitute(original, quantityOf.get(original.id)!, pool);
+      if (!choice) continue;
+      if (!table.has(storeId)) table.set(storeId, new Map());
+      table.get(storeId)!.set(original.id, choice);
+    }
   }
   return table;
 }

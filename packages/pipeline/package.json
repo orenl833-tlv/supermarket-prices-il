@@ -7,11 +7,13 @@
     "migrate": "tsx src/db/migrate.ts",
     "geocode": "tsx src/geocode.ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "classify": "tsx src/classify.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.12.1",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "@spil/catalog": "*"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

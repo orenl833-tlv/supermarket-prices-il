@@ -20,6 +20,7 @@
     "@spil/engine": "*",
     "fastify": "^5.6.1",
     "pg": "^8.23.1",
-    "@fastify/static": "^10.1.11"
+    "@fastify/static": "^10.1.11",
+    "@spil/catalog": "*"
   }
 }

@@ -7,6 +7,7 @@ import type {
   PlanStop,
   PriceTable,
   Store,
+  SubstituteTable,
 } from "./types.js";
 
 export interface OptimizeInput {
@@ -36,6 +37,12 @@ export interface OptimizeInput {
    * be the same chain at different addresses.
    */
   onePerChain?: boolean;
+  /**
+   * Close substitutes per store, used for an item only in a store that does
+   * not have the exact product. A substitute counts as having the item, so it
+   * also satisfies "must".
+   */
+  substitutes?: SubstituteTable;
 }
 
 /**
@@ -52,12 +59,11 @@ export interface OptimizeInput {
  * search is exact and simple, so there is no need for anything cleverer.
  */
 export function optimize(input: OptimizeInput): Plan[] {
-  const { basket, stores, prices, costModel, maxStores, penalties, missingTripCost, limit = 5, onePerChain = false } =
-    input;
+  const { stores, maxStores, limit = 5, onePerChain = false } = input;
   const plans: Plan[] = [];
 
   for (const combo of combinations(stores, maxStores)) {
-    const plan = evaluate(combo, basket, prices, costModel, penalties, missingTripCost);
+    const plan = evaluate(combo, input);
     if (plan) plans.push(plan);
   }
 
@@ -83,35 +89,54 @@ export function optimize(input: OptimizeInput): Plan[] {
 }
 
 /** Price one combination of stores, or null if it is not a valid plan. */
-function evaluate(
-  combo: Store[],
-  basket: BasketItem[],
-  prices: PriceTable,
-  costModel: CostModel,
-  penalties: ReadonlyMap<number, number>,
-  missingTripCost: number,
-): Plan | null {
+function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
+  const { basket, prices, costModel, penalties, missingTripCost, substitutes } = input;
   const linesByStore = new Map<number, PlanLine[]>(combo.map((s) => [s.id, []]));
   const missing: MissingItem[] = [];
+  let substitutionCost = 0;
 
   for (const item of basket) {
-    // The cheapest store in this combination that has the item (nearer wins a tie).
-    let best: { store: Store; price: number } | null = null;
+    // Every way to get this item in this combination: the exact product where a
+    // store has it, otherwise that store's substitute. Cheapest (cost + penalty)
+    // wins; on a tie the exact product, then the nearer store.
+    let best: { store: Store; line: PlanLine; penalty: number } | null = null;
     for (const store of combo) {
       const price = prices.get(store.id)?.get(item.productId);
-      if (price === undefined) continue;
-      if (!best || price < best.price || (price === best.price && store.distanceKm < best.store.distanceKm)) {
-        best = { store, price };
+      let option: { line: PlanLine; penalty: number } | null = null;
+      if (price !== undefined) {
+        option = {
+          line: { productId: item.productId, quantity: item.quantity, unitPrice: price, lineTotal: money(price * item.quantity) },
+          penalty: 0,
+        };
+      } else {
+        const sub = substitutes?.get(store.id)?.get(item.productId);
+        if (sub) {
+          option = {
+            line: {
+              productId: sub.productId,
+              quantity: sub.quantity,
+              unitPrice: sub.unitPrice,
+              lineTotal: sub.lineTotal,
+              substituteFor: item.productId,
+            },
+            penalty: sub.penalty,
+          };
+        }
+      }
+      if (!option) continue;
+      const cost = option.line.lineTotal + option.penalty;
+      const bestCost = best ? best.line.lineTotal + best.penalty : Infinity;
+      if (
+        cost < bestCost ||
+        (best && cost === bestCost && (option.penalty < best.penalty || store.distanceKm < best.store.distanceKm))
+      ) {
+        best = { store, ...option };
       }
     }
 
     if (best) {
-      linesByStore.get(best.store.id)!.push({
-        productId: item.productId,
-        quantity: item.quantity,
-        unitPrice: best.price,
-        lineTotal: money(best.price * item.quantity),
-      });
+      linesByStore.get(best.store.id)!.push(best.line);
+      substitutionCost += best.penalty;
     } else if (item.importance === "must") {
       return null; // a must-have item is not available in this combination
     } else {
@@ -134,13 +159,15 @@ function evaluate(
   const itemsCost = money(sum(stops.map((s) => s.subtotal)));
   const needsAnotherTrip = missing.some((m) => m.importance === "normal");
   const penaltyCost = money(sum(missing.map((m) => m.penalty)) + (needsAnotherTrip ? missingTripCost : 0));
+  substitutionCost = money(substitutionCost);
   return {
     stops,
     missing,
     itemsCost,
     fixedCost,
     penaltyCost,
-    score: money(itemsCost + fixedCost + penaltyCost),
+    substitutionCost,
+    score: money(itemsCost + fixedCost + penaltyCost + substitutionCost),
   };
 }
 

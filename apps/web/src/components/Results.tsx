@@ -41,6 +41,7 @@ function PlanCard({
 }) {
   const [open, setOpen] = useState(best);
   const stores = plan.stops.map((s) => `${s.store.chain} ${s.store.name}`).join(" + ");
+  const substitutes = plan.stops.flatMap((s) => s.lines).filter((l) => l.substituteFor !== undefined);
 
   return (
     <article className={`card plan ${best ? "best" : ""}`}>
@@ -56,13 +57,20 @@ function PlanCard({
         <div className="price">
           <strong>{money(plan.itemsCost)}</strong>
           {plan.score !== plan.itemsCost && (
-            <span className="muted small" title="כולל השלמת מוצרים חסרים ועצירה נוספת">
+            <span className="muted small" title="כולל השלמת מוצרים חסרים, תחליפים ועצירה נוספת">
               משוקלל {money(plan.score)}
             </span>
           )}
           {!best && diff > 0 && <span className="muted small">+{money(diff)} מהמומלץ</span>}
         </div>
       </header>
+
+      {substitutes.length > 0 && (
+        <p className="note small">
+          {substitutes.length === 1 ? "עם תחליף קרוב ל" : "עם תחליפים קרובים ל: "}
+          {substitutes.map((l) => name(l.substituteFor!)).join(", ")}
+        </p>
+      )}
 
       {plan.missing.length > 0 && (
         <p className="warn small">
@@ -86,8 +94,12 @@ function PlanCard({
               {stop.lines.map((l) => (
                 <li key={l.productId} className="row between">
                   <span>
+                    {l.substituteFor !== undefined && <span className="tag">תחליף</span>}
                     {name(l.productId)}
                     {l.quantity !== 1 && <span className="muted"> × {l.quantity}</span>}
+                    {l.substituteFor !== undefined && (
+                      <span className="muted small"> (במקום {name(l.substituteFor)})</span>
+                    )}
                   </span>
                   <span>{money(l.lineTotal)}</span>
                 </li>

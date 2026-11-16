@@ -32,6 +32,13 @@ const OVERRIDES: Record<string, string> = {
   "7290027600007:695": "הברזל 20", // Shufersal BE inside Assuta Ramat HaHayal
 };
 
+/**
+ * Coordinates entered by hand for branches the geocoder cannot find, keyed by
+ * "<chain code>:<store code>". Take them from a map pin, never guess.
+ * Example: "7290027600007:239": { lat: 32.05, lon: 34.76 }, // Shufersal Express Hadror 2, Jaffa
+ */
+export const MANUAL_COORDINATES: Record<string, { lat: number; lon: number }> = {};
+
 interface StoreRow {
   id: number;
   chain_code: string;
@@ -167,6 +174,17 @@ export async function geocodeStores(
   let updated = 0;
   const failed: string[] = [];
   for (const store of rows) {
+    const manual = MANUAL_COORDINATES[`${store.chain_code}:${store.store_code}`];
+    if (manual) {
+      await pool.query(
+        `UPDATE stores SET lat = $2, lon = $3, geocode_query = NULL,
+           geocode_precision = 'manual', geocoded_at = now()
+         WHERE id = $1`,
+        [store.id, manual.lat, manual.lon],
+      );
+      updated++;
+      continue;
+    }
     const query = geocodeQuery(store);
     if (query === null) {
       failed.push(`${store.name}: no usable address`);

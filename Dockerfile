@@ -5,6 +5,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 COPY packages/pipeline/package.json packages/pipeline/
+COPY packages/catalog/package.json packages/catalog/
 COPY packages/engine/package.json packages/engine/
 COPY packages/api/package.json packages/api/
 COPY apps/web/package.json apps/web/

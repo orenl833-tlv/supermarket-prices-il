@@ -32,13 +32,21 @@ export interface Store {
 export interface Plan {
   stops: Array<{
     store: Store;
-    lines: Array<{ productId: number; quantity: number; unitPrice: number; lineTotal: number }>;
+    lines: Array<{
+      productId: number;
+      quantity: number;
+      unitPrice: number;
+      lineTotal: number;
+      /** Set when the line is a close substitute for this basket product. */
+      substituteFor?: number;
+    }>;
     subtotal: number;
   }>;
   missing: Array<{ productId: number; importance: Importance; penalty: number }>;
   itemsCost: number;
   fixedCost: number;
   penaltyCost: number;
+  substitutionCost: number;
   score: number;
 }
 
