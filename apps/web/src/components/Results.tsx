@@ -1,8 +1,9 @@
 import { useState } from "react";
 import type { CompareResult, Plan } from "../api";
 import { distance, money } from "../format";
+import { ResultsMap } from "./ResultsMap";
 
-export function Results({ result }: { result: CompareResult }) {
+export function Results({ result, origin }: { result: CompareResult; origin: { lat: number; lon: number } }) {
   const name = (id: number) => result.productNames[id] ?? `מוצר ${id}`;
   const [best, ...rest] = result.plans;
 
@@ -20,6 +21,7 @@ export function Results({ result }: { result: CompareResult }) {
         נבדקו {result.storesConsidered} סניפים באזור.
         {result.unavailable.length > 0 && <> אין באזור: {result.unavailable.map(name).join(", ")}.</>}
       </p>
+      <ResultsMap origin={origin} plans={result.plans} />
       <PlanCard plan={best} best name={name} />
       {rest.map((plan, i) => (
         <PlanCard key={i} plan={plan} name={name} diff={plan.score - best.score} />
