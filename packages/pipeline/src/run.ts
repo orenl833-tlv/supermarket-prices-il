@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 import type pg from "pg";
 import { shufersal } from "./chains/shufersal.js";
-import { ramiLevy } from "./chains/publishedprices.js";
+import { doralon, ramiLevy, yochananof } from "./chains/publishedprices.js";
+import { areaFromEnv, isInArea } from "./area.js";
 import type { ChainSource } from "./chains/types.js";
 import { applyPrices, upsertChain, upsertProducts, upsertStores } from "./db/load.js";
 import { migrate } from "./db/migrate.js";
@@ -18,8 +19,8 @@ import { checkPriceFile } from "./quality.js";
  * One branch failing does not stop the others; the process exits non-zero at
  * the end so the scheduler marks the run as failed.
  */
-const CHAINS: ChainSource[] = [shufersal, ramiLevy];
-const CITY_CODES = (process.env.CITY_CODES ?? "5000").split(","); // 5000 = Tel Aviv-Yafo
+const CHAINS: ChainSource[] = [shufersal, ramiLevy, doralon, yochananof];
+const AREA = areaFromEnv();
 
 type Outcome = "loaded" | "skipped" | "rejected" | "failed";
 
@@ -30,8 +31,8 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
     let storeIds: Map<string, number>;
     try {
       const storesFile = await chain.latestStoresFile();
-      const stores = parseStores(decodeFile(await chain.download(storesFile))).filter(
-        (s) => s.cityCode !== null && CITY_CODES.includes(s.cityCode),
+      const stores = parseStores(decodeFile(await chain.download(storesFile))).filter((s) =>
+        isInArea(s, AREA, chain.extraStoreCodes),
       );
       const chainId = await upsertChain(pool, chain.code, chain.name);
       storeIds = await upsertStores(pool, chainId, stores);
