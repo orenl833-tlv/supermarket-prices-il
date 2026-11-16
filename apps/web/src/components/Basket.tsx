@@ -1,5 +1,7 @@
 import type { BasketEntry, Importance } from "../api";
+import { useState } from "react";
 import { size } from "../format";
+import { shareUrl } from "../share";
 
 const IMPORTANCE: Array<{ value: Importance; label: string; hint: string }> = [
   { value: "must", label: "חובה", hint: "רק חנויות שיש בהן את המוצר" },
@@ -18,6 +20,30 @@ export function Basket({
   onRemove: (id: number) => void;
   onClear: () => void;
 }) {
+  const [link, setLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  /**
+   * Shares the list as a link: the phone's share sheet where there is one
+   * (WhatsApp and the like), otherwise the clipboard. The link is also shown,
+   * so it can always be copied by hand.
+   */
+  async function share() {
+    const url = shareUrl(entries);
+    setLink(url);
+    setCopied(false);
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "הרשימה שלי", text: "רשימת קניות מהסל הזול", url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setCopied(true);
+      }
+    } catch {
+      /* the share sheet was closed, or the clipboard is blocked: the link is shown */
+    }
+  }
+
   if (entries.length === 0) {
     return (
       <section className="card empty">
@@ -30,10 +56,28 @@ export function Basket({
     <section className="card">
       <div className="row between">
         <h2 className="h2">הרשימה שלי ({entries.length})</h2>
-        <button className="link" onClick={onClear}>
-          ניקוי
-        </button>
+        <div className="row gap">
+          <button className="link" onClick={share}>
+            שיתוף
+          </button>
+          <button className="link" onClick={onClear}>
+            ניקוי
+          </button>
+        </div>
       </div>
+      {link && (
+        <div className="share-box" role="status">
+          <span className="small">{copied ? "הקישור הועתק. אפשר להדביק בווטסאפ." : "הקישור לרשימה:"}</span>
+          <input
+            className="input small"
+            dir="ltr"
+            readOnly
+            value={link}
+            aria-label="קישור לרשימה"
+            onFocus={(e) => e.target.select()}
+          />
+        </div>
+      )}
       <ul className="basket">
         {entries.map(({ product, quantity, importance, anyBrand }) => {
           const step = product.isWeighted ? 0.5 : 1;

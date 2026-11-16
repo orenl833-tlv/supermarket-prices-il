@@ -301,6 +301,17 @@ button:disabled {
 }
 
 /* basket */
+.share-box {
+  margin: 4px 0 8px;
+  padding: 10px;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  display: grid;
+  gap: 6px;
+  z-index: 2;
+}
+
 .basket {
   list-style: none;
   margin: 0;

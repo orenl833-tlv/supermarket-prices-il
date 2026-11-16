@@ -26,6 +26,19 @@ export interface ProductHit {
  * before Kinder egg chocolate), then products sold by more chains (only those
  * can be compared), then by more stores: those are the ones people usually mean.
  */
+/** Columns and joins shared by every query that returns ProductHit rows. */
+const HIT_COLUMNS = `
+  SELECT p.id, p.name, p.manufacturer, p.quantity::float AS quantity, p.unit, p.is_weighted,
+         count(DISTINCT pc.store_id)::int AS store_count,
+         array_agg(DISTINCT c.name ORDER BY c.name) AS chains,
+         min(pc.price)::float AS min_price, max(pc.price)::float AS max_price,
+         cat.name AS category
+  FROM products p
+  LEFT JOIN categories cat ON cat.id = p.category_id
+  JOIN price_changes pc ON pc.product_id = p.id AND pc.valid_to IS NULL
+  JOIN stores s ON s.id = pc.store_id
+  JOIN chains c ON c.id = s.chain_id`;
+
 export async function searchProducts(db: pg.Pool, query: string, limit = 20): Promise<ProductHit[]> {
   const q = query.trim();
   if (q === "") return [];
@@ -33,23 +46,26 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
   const isBarcode = /^\d{6,14}$/.test(q);
   const words = q.split(/\s+/).map((w) => `%${escapeLike(w)}%`);
   const { rows } = await db.query(
-    `SELECT p.id, p.name, p.manufacturer, p.quantity::float AS quantity, p.unit, p.is_weighted,
-            count(DISTINCT pc.store_id)::int AS store_count,
-            array_agg(DISTINCT c.name ORDER BY c.name) AS chains,
-            min(pc.price)::float AS min_price, max(pc.price)::float AS max_price,
-            cat.name AS category
-     FROM products p
-     LEFT JOIN categories cat ON cat.id = p.category_id
-     JOIN price_changes pc ON pc.product_id = p.id AND pc.valid_to IS NULL
-     JOIN stores s ON s.id = pc.store_id
-     JOIN chains c ON c.id = s.chain_id
+    `${HIT_COLUMNS}
      WHERE ${isBarcode ? "p.barcode = $1" : "p.name ILIKE ALL ($1::text[])"}
      GROUP BY p.id, cat.name
      ORDER BY p.name ILIKE $3 DESC, count(DISTINCT c.id) DESC, store_count DESC, length(p.name), p.name
      LIMIT $2`,
     [isBarcode ? q : words, limit, `${escapeLike(q.split(/\s+/)[0]!)}%`],
   );
-  return rows.map((r) => ({
+  return rows.map(toHit);
+}
+
+/** Products by id, in the order asked (unknown or no longer sold ids are left out). */
+export async function productsByIds(db: pg.Pool, ids: number[]): Promise<ProductHit[]> {
+  if (ids.length === 0) return [];
+  const { rows } = await db.query(`${HIT_COLUMNS} WHERE p.id = ANY($1::int[]) GROUP BY p.id, cat.name`, [ids]);
+  const byId = new Map(rows.map((r) => [r.id as number, toHit(r)]));
+  return ids.flatMap((id) => byId.get(id) ?? []);
+}
+
+function toHit(r: Record<string, any>): ProductHit {
+  return {
     id: r.id,
     name: r.name,
     manufacturer: r.manufacturer,
@@ -65,7 +81,7 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
       { id: r.id, name: r.name, quantity: r.quantity, unit: r.unit, isWeighted: r.is_weighted },
       r.min_price,
     ),
-  }));
+  };
 }
 
 /**
@@ -113,8 +129,7 @@ export async function categorySuggestion(
     products.find((p) => matchesDefaults(p) && typicalSize(p)) ?? products.find(matchesDefaults) ?? products[0];
   if (!chosen) return null;
 
-  // Reuse the search for the same fields (chains, unit price) on this product.
-  const hit = (await searchProducts(db, chosen.name, 50)).find((h) => h.id === chosen.id);
+  const [hit] = await productsByIds(db, [chosen.id]);
   return hit ? { category: category.name, product: hit } : null;
 }
 

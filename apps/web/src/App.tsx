@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { compare, status, type BasketEntry, type CompareResult, type Product } from "./api";
+import { compare, productsByIds, status, type BasketEntry, type CompareResult, type Product } from "./api";
 import { Basket } from "./components/Basket";
 import { ProductSearch } from "./components/ProductSearch";
 import { Results } from "./components/Results";
 import { PLACES, Settings, type SearchSettings } from "./components/Settings";
 import { age, storage } from "./format";
+import { decodeList } from "./share";
 
 const DEFAULT_SETTINGS: SearchSettings = {
   location: PLACES[0]!,
@@ -26,6 +27,28 @@ export function App() {
   useEffect(() => storage.set("settings", settings), [settings]);
   useEffect(() => {
     status().then(setFreshness).catch(() => {});
+  }, []);
+
+  // Opening a shared list (?list=...): load its products, then drop the
+  // parameter so a reload does not import it again.
+  useEffect(() => {
+    const param = new URLSearchParams(window.location.search).get("list");
+    if (!param) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    const items = decodeList(param);
+    if (items.length === 0) return;
+    productsByIds(items.map((i) => i.productId))
+      .then((products) => {
+        const byId = new Map(products.map((p) => [p.id, p]));
+        const shared: BasketEntry[] = items.flatMap((i) => {
+          const product = byId.get(i.productId);
+          return product ? [{ product, quantity: i.quantity, importance: i.importance, anyBrand: i.anyBrand }] : [];
+        });
+        setBasket((current) =>
+          current.length === 0 || window.confirm("לפתוח את הרשימה ששותפה במקום הרשימה הנוכחית?") ? shared : current,
+        );
+      })
+      .catch(() => setError("לא הצלחנו לפתוח את הרשימה ששותפה."));
   }, []);
 
   // Any change to the basket or settings makes old results stale.

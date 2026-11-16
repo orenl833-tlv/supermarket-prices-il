@@ -8,6 +8,7 @@ import {
   findSubstitutes,
   freshness,
   productNames,
+  productsByIds,
   searchProducts,
   storesNear,
 } from "./queries.js";
@@ -62,6 +63,21 @@ export function buildServer(
       ]);
       return { products, suggestion };
     },
+  );
+
+  // Used to open a shared list: the link carries product ids only.
+  app.get<{ Querystring: { ids: string } }>(
+    "/api/products/by-id",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["ids"],
+          properties: { ids: { type: "string", pattern: "^\\d+(,\\d+){0,59}$" } },
+        },
+      },
+    },
+    async (req) => ({ products: await productsByIds(db, req.query.ids.split(",").map(Number)) }),
   );
 
   app.post<{ Body: CompareBody }>(
