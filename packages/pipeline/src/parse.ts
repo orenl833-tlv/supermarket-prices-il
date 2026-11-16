@@ -78,8 +78,9 @@ function toPriceItem(raw: Node): PriceItem | null {
   };
 }
 
+/** Chains write placeholders instead of leaving the field empty: "לא ידוע", "כללי", "---". */
 function cleanManufacturer(value: string | null): string | null {
-  if (!value || value === "לא ידוע" || value === "כללי") return null;
+  if (!value || /^(לא ידוע|כללי|[-.\s]+)$/.test(value)) return null;
   return value;
 }
 

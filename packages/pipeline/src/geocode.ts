@@ -30,6 +30,9 @@ const OVERRIDES: Record<string, string> = {
   "7290803800003:35": "נחלת יצחק", // Yochananof Nahalat Yitshak
   "7290803800003:54": "אחד העם", // Yochananof Ahad Ha'am, Tel Aviv
   "7290027600007:695": "הברזל 20", // Shufersal BE inside Assuta Ramat HaHayal
+  // Shufersal Express "Jaffa - Hadror" is published as "הדרור 2", a street OSM does not
+  // have; the owner gave its address as Yehuda Margoza 29, which OSM matches exactly.
+  "7290027600007:239": "יהודה מרגוזה 29",
 };
 
 /**

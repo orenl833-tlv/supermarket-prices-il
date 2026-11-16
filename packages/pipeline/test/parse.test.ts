@@ -120,6 +120,14 @@ describe("parsePriceFull", () => {
     });
   });
 
+  it("treats placeholder manufacturers as unknown", () => {
+    const xml = (m: string) =>
+      `<Root><ChainID>1</ChainID><StoreID>1</StoreID><Items><Item><ItemCode>1</ItemCode><ItemName>x</ItemName><ManufactureName>${m}</ManufactureName><ItemPrice>1</ItemPrice></Item></Items></Root>`;
+    expect(parsePriceFull(xml("---")).items[0]?.manufacturer).toBeNull();
+    expect(parsePriceFull(xml("כללי")).items[0]?.manufacturer).toBeNull();
+    expect(parsePriceFull(xml("תנובה")).items[0]?.manufacturer).toBe("תנובה");
+  });
+
   it("counts lines without a valid price as skipped", () => {
     expect(file.items).toHaveLength(2);
     expect(file.skipped).toBe(1);
