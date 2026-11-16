@@ -91,12 +91,12 @@ The `Daily ingest` workflow runs every morning (and on demand from the Actions t
 - **Idempotent runs.** Every processed file is recorded in `ingest_runs`; re-running on the same file changes nothing.
 - **One engine, two cost models.** Picking branches within a radius and splitting an online order across chains are the same problem: choose a set of stores, buy each item where it is cheapest, and add a fixed cost per store. Only the fixed cost differs (an extra stop vs. a delivery fee with a minimum order), so the engine takes a `CostModel`. Delivery is implemented and tested but not exposed yet.
 - **Missing items are priced, not ignored.** Otherwise the "cheapest" store is the one with the most gaps. A missing item costs its highest price nearby plus one extra trip; a "must" item rules a store out; an "if available" item costs nothing.
-- **Close substitutes, priced as whole packs.** Staple categories (eggs, milk, cottage cheese, butter, fresh vegetables, rice, flour, oil, sugar) are recognized by hand-written rules tested against real product names. When a store lacks the exact product, its best same-category product is used: enough whole packs to cover the amount (12 eggs from 18-packs means one 18-pack), plus a small ranking penalty (₪0.50, more for each attribute that differs, such as egg size or free-range). Some attributes are hard: lactose-free milk never replaces regular milk.
+- **Close substitutes, priced as whole packs.** 23 staple categories (eggs, milk, dairy, butter, fresh vegetables, pasta, rice, flour, tuna, oil, sugar, salt and more) are recognized by hand-written rules tested against real product names. When a store lacks the exact product, its best same-category product is used: enough whole packs to cover the amount (12 eggs from 18-packs means one 18-pack), plus a small ranking penalty (₪0.50, more for each attribute that differs, such as egg size or free-range). Some attributes are hard: lactose-free milk never replaces regular milk.
 - **Exhaustive search.** With up to 30 nearby stores and at most 2 stops there are 465 combinations, so the engine tries them all and the answer is exact.
 
 ## Known limitations
 
-- Products are matched across chains by barcode, and by close substitutes only within the 15 staple categories. Other products with chain-internal codes cannot be compared yet; the search shows when a product is sold by one chain only.
+- Products are matched across chains by barcode, and by close substitutes only within the 23 staple categories. Other products with chain-internal codes cannot be compared yet; the search shows when a product is sold by one chain only.
 - Regular prices only; promotions are not applied.
 - Carrefour and Victory are not loaded yet: their portals only answer Israeli IP addresses.
 

@@ -30,6 +30,30 @@ describe("classify, real names from the chains' files", () => {
     ["חמאה מהדרין 200ג תנובה", "butter"],
     ["אורז בסמטי 1 ק\"ג", "rice"],
     ["פריכיות אורז", null],
+    ["ספגטי מס 5 ברילה500גר", "pasta"],
+    ["פסטה פוזילי 500גרם ברילה", "pasta"],
+    ["פסטה עם רוטב גבינה156ג", null],
+    ["פסטה+טונה בשמן זית 160ג", null],
+    ["טונה במי מלח4*160ג", "tuna"],
+    ["טונה ריו שמן זית לימ3*65", "tuna"],
+    ["שמנת חמוצה15% 200מ תנובה", "sour-cream"],
+    ["שמנת לבישול 10%שומן250מ", "cooking-cream"],
+    ["שמנת צמחית בישול250אלפרו", null],
+    ["שמנת להקצפה38% תנובה500מ", "whipping-cream"],
+    ["שמנתלהקצפה 38% 250 גרם", "whipping-cream"],
+    ["יוגורט ביו 3% 200ג תנובה", "plain-yogurt"],
+    ["יוגורט GO קרמי תות 200ג", null],
+    ["יוגורט יווני 6.5% 130גר", null],
+    ["מלח ים דק 500ג מלח הארץ", "salt"],
+    ["מלח לימון 170 גרם", null],
+    ["מלח הימלאיה דק 1 ק\"ג", null],
+    ["עגבניות מרוסקות800ג יכין", "crushed-tomatoes"],
+    ["ספגטי קמח מלא אורגני500ג", null],
+    ["ספגטי מלא אורגני גרין500", null],
+    ["פסטה ספירלי ללג400 ברילה", null],
+    ["פסטה טורטליוני500ג ברילה", null],
+    ["עגבניות מרוסקות מרוכ", null],
+    ["עגבניות מרוסקות בזיל", null],
     // False positives found by running the rules over all 35,852 products:
     ["חלב גוף משזף 240מ\"ל", null],
     ["חלב פנים גאלאטה קונפורט", null],
@@ -58,6 +82,13 @@ describe("classify, real names from the chains' files", () => {
     expect(classify(p("חמאה לה גל זהב עם מלח200"))?.attributes).toEqual({ salt: "salted" });
     expect(classify(p("גבינת קוטג%5מהדרין250גר"))?.attributes).toEqual({ fat: "5%" });
     expect(classify(p("אורז בסמתי 'גולד' מו"))?.attributes).toEqual({ kind: "basmati" });
+    expect(classify(p("טונה בשמן זית 3*65 גרם"))?.attributes).toEqual({ packed: "oil", olive: "olive" });
+    expect(classify(p("טונה סטארקיסט במים4*160ג"))?.attributes).toEqual({ packed: "water", olive: null });
+    expect(classify(p("ספגטי מס 7 500 גרם"))?.attributes).toEqual({ shape: "long" });
+    expect(classify(p("מלח הארץ גס צנצנת 1 ק\"ג"))?.attributes).toEqual({ grain: "coarse" });
+    expect(classify(p("שמנת להקצפה 24% 250"))?.attributes).toEqual({ fat: "24%" });
+    expect(classify(p("שמנת להקצפה 42% רמת"))?.attributes).toEqual({ fat: "42%" });
+    expect(classify(p("יוגורט ביו נטול לקטו"))?.attributes).toEqual({ fat: null, lactose: "free" });
   });
 });
 

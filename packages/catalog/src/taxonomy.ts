@@ -221,6 +221,145 @@ export const CATEGORIES: CategoryDef[] = [
       },
     ],
   },
+  {
+    key: "pasta",
+    name: "פסטה יבשה",
+    unit: "g",
+    weighted: false,
+    match: /^(פסטה|ספגטי|ספגטיני|פנה|פוזילי|ספירלי|פרפלה)/,
+    exclude:
+      /רוטב|טונה|\+|מוכנ|גלוטן|ללג|(^|\s)מלאה?(\s|$)|כוסמין|עדשים|חומוס|ילדים|לזניה|ניוקי|טרי|ממולא|ברוטב|מוקפא|סלט|טורטל|רביולי|קפלטי/,
+    shelfLifeDays: 730,
+    attributes: [
+      {
+        key: "shape",
+        mismatchPenalty: 1,
+        read: (name) => (/ספגטי|לינגוויני|טגליאטלה|פטוצ/.test(name) ? "long" : "short"),
+      },
+    ],
+  },
+  {
+    key: "tuna",
+    name: "טונה בקופסה",
+    unit: "g",
+    weighted: false,
+    match: /^טונה/,
+    exclude: /סלט|פסטה|עם |ממרח|ניסואז|חריף|לימון|פלפל|עגבני|שום|מתובל/,
+    shelfLifeDays: 1095,
+    attributes: [
+      {
+        key: "packed",
+        mismatchPenalty: 1.5,
+        read: pick([
+          [/מים|מי מלח/, "water"],
+          [/שמן|בש\./, "oil"],
+        ]),
+      },
+      { key: "olive", mismatchPenalty: 1, read: (n) => (/זית/.test(n) ? "olive" : null) },
+    ],
+  },
+  {
+    key: "sour-cream",
+    name: "שמנת חמוצה",
+    unit: "ml",
+    weighted: false,
+    match: /^שמנת חמוצה/,
+    exclude: /צמחית|בטעם|שום|עשבי/,
+    typicalSize: 200,
+    shelfLifeDays: 21,
+    attributes: [
+      fat(
+        [
+          [10, "9%"],
+          [17, "15%"],
+          [25, "20%"],
+          [35, "27-30%"],
+        ],
+        1,
+      ),
+    ],
+  },
+  {
+    key: "cooking-cream",
+    name: "שמנת לבישול",
+    unit: "ml",
+    weighted: false,
+    match: /^שמנת (ל)?בישול/,
+    exclude: /צמחית|סויה|קוקוס|שקדים/,
+    shelfLifeDays: 30,
+    attributes: [
+      fat(
+        [
+          [12, "10%"],
+          [20, "15%"],
+        ],
+        0.5,
+      ),
+    ],
+  },
+  {
+    key: "whipping-cream",
+    name: "שמנת מתוקה להקצפה",
+    unit: "ml",
+    weighted: false,
+    match: /^שמנת ?(מתוקה )?ל?הקצפה|^שמנת מתוקה/,
+    exclude: /צמחית|סויה|קוקוס|תרסיס|ספריי|מוקצפת/,
+    typicalSize: 250,
+    shelfLifeDays: 30,
+    attributes: [
+      fat(
+        [
+          [27, "24%"],
+          [35, "32%"],
+          [40, "38%"],
+          [45, "42%"],
+        ],
+        0.5,
+      ),
+    ],
+  },
+  {
+    key: "plain-yogurt",
+    name: "יוגורט טבעי",
+    unit: "g",
+    weighted: false,
+    match: /^יוגורט( ביו| טבעי)/,
+    exclude:
+      /תות|וניל|פירות|שוקו|קפה|דבש|גרנולה|חלבון|GO|עיזים|עזים|כבשים|יווני|שתיה|משקה|אפרסק|בננה|דובדבן|ענבים|מנגו|טעם|לימון|תמר|ריבה/,
+    shelfLifeDays: 21,
+    attributes: [
+      fat(
+        [
+          [0.5, "0%"],
+          [2, "1.5%"],
+          [4.5, "3%"],
+        ],
+        1,
+      ),
+      { key: "lactose", hard: true, mismatchPenalty: 0, read: (n) => (/לקטו|לקטז/.test(n) ? "free" : "regular") },
+    ],
+  },
+  {
+    key: "salt",
+    name: "מלח",
+    unit: "g",
+    weighted: false,
+    match: /^מלח (שולחן|ים|בישול|הארץ|דק|גס|עדין)/,
+    exclude: /לימון|הימלאיה|מופחת|ורוד|שום|צ'ילי|עשבי|שחור|פלפל|מעושן|לשטיפ/,
+    shelfLifeDays: 3650,
+    attributes: [{ key: "grain", mismatchPenalty: 1, read: pick([[/גס/, "coarse"]], "fine") }],
+  },
+  {
+    key: "crushed-tomatoes",
+    name: "עגבניות מרוסקות",
+    unit: "g",
+    weighted: false,
+    match: /^עגבניות מרוסקות/,
+    // Names are often cut short in the files: "מרוכ" (concentrate), "בזיל" (basil), "תוספ" (with additions).
+    exclude: /בזיל|שום|פלפל|בצל|אורגני|עשבי|מרוכ|תוספ|עם /,
+    shelfLifeDays: 730,
+    attributes: [],
+  },
 ];
 
 function produce(
