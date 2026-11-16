@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0f766e"/>
+  <!-- basket -->
+  <path d="M120 210h272l-28 170a28 28 0 0 1-28 24H176a28 28 0 0 1-28-24z" fill="#ffffff"/>
+  <path d="M176 210l56-90M336 210l-56-90" stroke="#ffffff" stroke-width="28" stroke-linecap="round" fill="none"/>
+  <path d="M200 260v100M256 260v100M312 260v100" stroke="#0f766e" stroke-width="20" stroke-linecap="round"/>
+</svg>

@@ -20,6 +20,7 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 - [x] Hosted Postgres (Neon), loaded by the daily run
 - [x] Basket optimization engine (one or two stores, missing-item penalties)
 - [x] API (Fastify) and web app (React + TypeScript, Hebrew, mobile-first)
+- [x] Installable on phones (PWA); the shopping list opens without a connection
 - [ ] Public deployment
 
 ## Stack

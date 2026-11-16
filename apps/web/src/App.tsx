@@ -20,6 +20,7 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [freshness, setFreshness] = useState<Array<{ chain: string; updatedAt: string | null }>>([]);
+  const online = useOnline();
 
   useEffect(() => storage.set("basket", basket), [basket]);
   useEffect(() => storage.set("settings", settings), [settings]);
@@ -82,7 +83,12 @@ export function App() {
         <Basket entries={basket} onChange={change} onRemove={remove} onClear={() => setBasket([])} />
         <Settings value={settings} onChange={setSettings} />
 
-        <button className="primary" disabled={basket.length === 0 || loading} onClick={run}>
+        {!online && (
+          <p className="warn" role="status">
+            אין חיבור לאינטרנט. הרשימה שמורה, וההשוואה תחזור כשיהיה חיבור.
+          </p>
+        )}
+        <button className="primary" disabled={basket.length === 0 || loading || !online} onClick={run}>
           {loading ? "משווה…" : "איפה הכי זול?"}
         </button>
         {error && <p className="warn">{error}</p>}
@@ -98,4 +104,19 @@ export function App() {
       </footer>
     </div>
   );
+}
+
+/** Tracks the browser's online/offline state. */
+function useOnline(): boolean {
+  const [online, setOnline] = useState(() => navigator.onLine);
+  useEffect(() => {
+    const update = () => setOnline(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
+    return () => {
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    };
+  }, []);
+  return online;
 }
