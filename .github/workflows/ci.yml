@@ -16,7 +16,7 @@ jobs:
           POSTGRES_DB: spil_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/spil_test
     steps:
@@ -28,3 +28,13 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # End-to-end: the built web app served by the API, on a seeded database.
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+      - run: npm run e2e:seed -w @spil/web
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+      - run: npm run e2e -w @spil/web
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}

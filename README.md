@@ -58,6 +58,14 @@ npm test                # integration tests run when TEST_DATABASE_URL is set
 npm run dev             # API on :3001 and the web app on :5173
 ```
 
+End-to-end tests (Playwright, phone-sized Chromium) run the built app against a seeded database:
+
+```bash
+DATABASE_URL=<throwaway db> npm run e2e:seed -w @spil/web
+npm run build
+DATABASE_URL=<same db> npm run e2e -w @spil/web
+```
+
 A first run loads about 190,000 prices (49 MB). Later runs write only the prices that changed, and skip files already processed.
 
 ## Deploying
