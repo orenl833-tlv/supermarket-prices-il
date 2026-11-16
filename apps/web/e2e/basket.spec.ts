@@ -113,3 +113,11 @@ test("copies the chosen plan as a shopping list", async ({ page, context }) => {
   expect(text).toContain("🛒 זולה זולה דיזנגוף");
   expect(text).toContain('סה"כ');
 });
+
+test("shows what the pipeline loaded per chain", async ({ page }) => {
+  const panel = page.locator(".data-panel");
+  await expect(panel.locator("summary")).toContainText("2 רשתות");
+  await panel.locator("summary").click();
+  await expect(panel.getByRole("row")).toHaveCount(3); // header + two chains
+  await expect(panel.getByRole("rowheader").first()).toHaveText("זולה");
+});
