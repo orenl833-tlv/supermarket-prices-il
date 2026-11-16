@@ -14,6 +14,8 @@ export interface ProductHit {
   chains: string[];
   minPrice: number;
   maxPrice: number;
+  /** The chain with the lowest price; null when every chain asks the same. */
+  cheapestChain: string | null;
   /** Substitute category, when the product is in one: "any brand" is possible. */
   category: string | null;
   /** The lowest price per litre, kg or egg, for comparing pack sizes. */
@@ -32,6 +34,7 @@ const HIT_COLUMNS = `
          count(DISTINCT pc.store_id)::int AS store_count,
          array_agg(DISTINCT c.name ORDER BY c.name) AS chains,
          min(pc.price)::float AS min_price, max(pc.price)::float AS max_price,
+         (array_agg(c.name ORDER BY pc.price, c.name))[1] AS cheapest_chain,
          cat.name AS category
   FROM products p
   LEFT JOIN categories cat ON cat.id = p.category_id
@@ -81,6 +84,8 @@ function toHit(r: Record<string, any>): ProductHit {
     chains: r.chains,
     minPrice: r.min_price,
     maxPrice: r.max_price,
+    // Naming a "cheapest" chain only means something when prices differ.
+    cheapestChain: r.min_price < r.max_price ? r.cheapest_chain : null,
     category: r.category,
     unitPrice: unitPriceOf(
       { id: r.id, name: r.name, quantity: r.quantity, unit: r.unit, isWeighted: r.is_weighted },
