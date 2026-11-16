@@ -1,0 +1,46 @@
+<Root>
+  <ChainID>7290055700007</ChainID>
+  <SubChainID>001</SubChainID>
+  <StoreID>085</StoreID>
+  <BikoretNo>4</BikoretNo>
+  <Items>
+    <Item>
+      <PriceUpdateTime>2026-10-05T11:19:24.000</PriceUpdateTime>
+      <ItemCode>7290017930060</ItemCode>
+      <LastSaleDateTime>2026-11-10T17:41:48.000</LastSaleDateTime>
+      <ItemType>1</ItemType>
+      <ItemName>גרגירי רימון 230 גר'</ItemName>
+      <ManufactureName>כללי</ManufactureName>
+      <ManufactureCountry>לא ידוע</ManufactureCountry>
+      <ManufactureItemDescription>גרגירי רימון 230 גר'</ManufactureItemDescription>
+      <UnitQty>גרם</UnitQty>
+      <Quantity>230.00</Quantity>
+      <UnitOfMeasure>100 גרם</UnitOfMeasure>
+      <bIsWeighted>0</bIsWeighted>
+      <QtyInPackage>לא ידוע</QtyInPackage>
+      <ItemPrice>18.90</ItemPrice>
+      <UnitOfMeasurePrice>8.22</UnitOfMeasurePrice>
+      <AllowDiscount>1</AllowDiscount>
+      <ItemStatus/>
+    </Item>
+    <Item>
+      <PriceUpdateTime>2025-10-28T11:40:36.000</PriceUpdateTime>
+      <ItemCode>4610028130052</ItemCode>
+      <LastSaleDateTime>2026-11-02T13:14:14.000</LastSaleDateTime>
+      <ItemType>1</ItemType>
+      <ItemName>לגינד אוף קרמלין ווד</ItemName>
+      <ManufactureName>אינווסט פרטנר</ManufactureName>
+      <ManufactureCountry>רוסיה</ManufactureCountry>
+      <ManufactureItemDescription>לגינד אוף קרמלין ווד</ManufactureItemDescription>
+      <UnitQty>מיליליטר</UnitQty>
+      <Quantity>700.00</Quantity>
+      <UnitOfMeasure>100 מיליליטר</UnitOfMeasure>
+      <bIsWeighted>0</bIsWeighted>
+      <QtyInPackage>לא ידוע</QtyInPackage>
+      <ItemPrice>125.20</ItemPrice>
+      <UnitOfMeasurePrice>17.89</UnitOfMeasurePrice>
+      <AllowDiscount>1</AllowDiscount>
+      <ItemStatus/>
+    </Item>
+  </Items>
+</Root>

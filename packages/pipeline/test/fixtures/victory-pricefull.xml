@@ -1,0 +1,46 @@
+<Root>
+  <ChainID>7290696200003</ChainID>
+  <SubChainID>001</SubChainID>
+  <StoreID>016</StoreID>
+  <BikoretNo>0</BikoretNo>
+  <Items>
+    <Item>
+      <PriceUpdateTime>2025-07-02T20:03:18.000</PriceUpdateTime>
+      <ItemCode>7290000000459</ItemCode>
+      <LastSaleDateTime>2026-11-15T20:54:57.000</LastSaleDateTime>
+      <ItemType>1</ItemType>
+      <ItemName>שום תפזורת תוצרת סין</ItemName>
+      <ManufactureName />
+      <ManufactureCountry />
+      <ManufactureItemDescription />
+      <UnitQty>קילוגרם</UnitQty>
+      <Quantity>1</Quantity>
+      <UnitOfMeasure>1 קילוגרם</UnitOfMeasure>
+      <bIsWeighted>1</bIsWeighted>
+      <QtyInPackage>1</QtyInPackage>
+      <ItemPrice>31.9</ItemPrice>
+      <UnitOfMeasurePrice>31.9</UnitOfMeasurePrice>
+      <AllowDiscount>0</AllowDiscount>
+      <ItemStatus />
+    </Item>
+    <Item>
+      <PriceUpdateTime>2025-08-10T14:33:47.000</PriceUpdateTime>
+      <ItemCode>7290000654973</ItemCode>
+      <LastSaleDateTime>2026-11-15T21:27:34.000</LastSaleDateTime>
+      <ItemType>1</ItemType>
+      <ItemName>גזר ארוז</ItemName>
+      <ManufactureName />
+      <ManufactureCountry />
+      <ManufactureItemDescription />
+      <UnitQty>קילוגרם</UnitQty>
+      <Quantity>1</Quantity>
+      <UnitOfMeasure>1 קילוגרם</UnitOfMeasure>
+      <bIsWeighted>1</bIsWeighted>
+      <QtyInPackage>1</QtyInPackage>
+      <ItemPrice>7.9</ItemPrice>
+      <UnitOfMeasurePrice>7.9</UnitOfMeasurePrice>
+      <AllowDiscount>0</AllowDiscount>
+      <ItemStatus />
+    </Item>
+  </Items>
+</Root>
