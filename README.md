@@ -25,6 +25,35 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 - [x] Installable on phones (PWA); the shopping list opens without a connection
 - [x] Public deployment (Render, from `render.yaml`)
 
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph daily["Every morning · GitHub Actions"]
+    pipeline["Pipeline<br/>download · parse · check · load"]
+  end
+  portals[("Chain portals<br/>XML price files")]
+  osm["OpenStreetMap<br/>geocoding"]
+  db[("PostgreSQL · Neon<br/>price history as change periods")]
+  subgraph render["One web service · Render"]
+    api["Fastify API"]
+    engine["Basket engine<br/>(pure TypeScript)"]
+    catalog["Substitute catalog<br/>(pure TypeScript)"]
+    web["React app · PWA"]
+  end
+  user(("Phone"))
+
+  portals --> pipeline
+  pipeline -- new branches --> osm
+  pipeline -- only changed prices --> db
+  user --> web --> api
+  api --> db
+  api --> engine
+  api --> catalog
+```
+
+A comparison request: the API finds branches within the radius (bounding box in SQL, exact distance in code), loads their current prices for the basket in one query, prices close substitutes per branch with the catalog, and hands everything to the engine, which tries every combination of one or two branches and ranks them. The engine and the catalog do no I/O, so they are tested in isolation; the API and pipeline are tested against a real Postgres; Playwright tests drive the built app end to end.
+
 ## Stack
 
 | Layer | Choice |
