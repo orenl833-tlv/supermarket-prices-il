@@ -2,6 +2,8 @@
 
 Find the cheapest nearby supermarket for your whole shopping basket in Israel.
 
+**Live:** https://supermarket-prices-il.onrender.com (Tel Aviv; the free server sleeps when idle, so the first visit can take up to a minute)
+
 <p>
   <img src="docs/screenshot-basket.png" alt="Shopping list with quantities and importance" width="300">
   <img src="docs/screenshot-result.png" alt="Cheapest store for the basket, with a per-item breakdown" width="300">
@@ -21,7 +23,7 @@ Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 7
 - [x] Basket optimization engine (one or two stores, missing-item penalties)
 - [x] API (Fastify) and web app (React + TypeScript, Hebrew, mobile-first)
 - [x] Installable on phones (PWA); the shopping list opens without a connection
-- [ ] Public deployment
+- [x] Public deployment (Render, from `render.yaml`)
 
 ## Stack
 
