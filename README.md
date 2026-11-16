@@ -5,15 +5,24 @@ Find the cheapest nearby supermarket for your whole shopping basket in Israel.
 **Live:** https://supermarket-prices-il.onrender.com (Tel Aviv; the free server sleeps when idle, so the first visit can take up to a minute)
 
 <p>
-  <img src="docs/screenshot-basket.png" alt="Shopping list with quantities and importance" width="300">
-  <img src="docs/screenshot-result.png" alt="Cheapest store for the basket, with a per-item breakdown" width="300">
+  <img src="docs/screenshot-search.png" alt="Search with a one-tap 'eggs, any brand' suggestion and price per egg" width="250">
+  <img src="docs/screenshot-result.png" alt="Cheapest store for the basket, with a close substitute and a per-item breakdown" width="250">
+  <img src="docs/screenshot-map.png" alt="Map of the starting point and the stores in the results" width="250">
 </p>
 
-Under Israel's food price transparency law, large supermarket chains publish the price of every product in every branch as XML files. The data is public but hard to use: each chain has its own portal and format. This project downloads those files daily, normalizes them into one PostgreSQL database, and (soon) serves a web app that compares a full basket across nearby branches.
+Under Israel's food price transparency law, large supermarket chains publish the price of every product in every branch as XML files. The data is public but hard to use: each chain has its own portal and format. This project downloads those files every morning, normalizes them into one PostgreSQL database, and serves a web app that compares a whole basket across nearby branches.
+
+**What it does**
+
+- Compares a whole shopping list across the branches within walking distance (4 chains, 74 Tel Aviv branches), optionally splitting it across two stores when that saves enough.
+- Offers close substitutes when a store lacks the exact product, priced as the whole packs you would actually buy; "any brand" items take the cheapest close product in each store.
+- Search by name or barcode, with price per litre, kg or egg; typing a category ("ביצים") offers "eggs, any brand" in one tap.
+- Shows the results on a map, shares a list as a link (WhatsApp-friendly, no accounts), installs on a phone and opens the list without a connection.
+- Flags a chain whose prices are out of date.
 
 ## Status
 
-Phase 1 (MVP) in progress: Tel Aviv, regular prices, no delivery. Four chains, 74 branches.
+Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Four chains, 74 branches; Carrefour and Victory are ready but need a run from an Israeli IP.
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
