@@ -349,6 +349,15 @@ button:disabled {
 }
 
 /* results */
+.results-map {
+  height: 240px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+  overflow: hidden;
+  z-index: 0; /* keep Leaflet's panes under the page */
+}
+
 .plan {
   margin-top: 12px;
 }
