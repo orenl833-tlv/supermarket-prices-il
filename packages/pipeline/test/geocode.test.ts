@@ -25,6 +25,19 @@ describe("geocodeQuery", () => {
     expect(cleanAddress("האומן,15")).toBe("האומן 15");
     expect(cleanAddress(" לא ידוע ")).toBeNull();
   });
+
+  it("cleans Carrefour's address styles", () => {
+    expect(cleanAddress("שד.הארזים 2")).toBe("שדרות הארזים 2");
+    expect(cleanAddress("ככר דיזנגוף 9")).toBe("כיכר דיזנגוף 9");
+    expect(cleanAddress("4-6 גרפית")).toBe("גרפית 4");
+    expect(cleanAddress("קניון גינדי - רחוב קרליבך")).toBe("קרליבך");
+    expect(cleanAddress("לה גרדיה 78")).toBe("לה גווארדיה 78");
+    expect(cleanAddress("עמק הברכה")).toBe("עמק ברכה");
+  });
+
+  it("looks up streets listed under Tel Aviv in their real city", () => {
+    expect(geocodeQuery({ ...store, address: "שד.האורנים 16" })).toBe("שדרות האורנים 16, רמת גן");
+  });
 });
 
 const url = process.env.TEST_DATABASE_URL;

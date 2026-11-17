@@ -65,7 +65,9 @@ export function geocodeQuery(store: Omit<StoreRow, "id" | "geocode_query">): str
   const city = CITY_NAMES[store.city_code ?? ""] ?? DEFAULT_CITY;
   const override = OVERRIDES[`${store.chain_code}:${store.store_code}`];
   const street = override ?? cleanAddress(store.address);
-  return street ? `${street}, ${city}` : null;
+  if (!street) return null;
+  const otherCity = Object.entries(STREET_CITY).find(([s]) => street === s || street.startsWith(`${s} `));
+  return `${street}, ${otherCity?.[1] ?? city}`;
 }
 
 /**
@@ -86,6 +88,20 @@ const STREET_ALIASES: Record<string, string> = {
   "שדרות מנחם בגין": "מנחם בגין",
   "דרך מנחם בגין": "מנחם בגין",
   "אלנקווה": "הרב אלנקוה",
+  // Carrefour spellings
+  "לה גרדיה": "לה גווארדיה",
+  "לה גוארדיה": "לה גווארדיה",
+  "עמק הברכה": "עמק ברכה",
+  "גרינבאום": "גרינבוים",
+};
+
+/**
+ * Streets that a chain lists under Tel Aviv but that are in a neighbouring
+ * city. Carrefour gives its Ramat Efal branches (Ramat Gan) a Tel Aviv city.
+ */
+const STREET_CITY: Record<string, string> = {
+  "שדרות הארזים": "רמת גן",
+  "שדרות האורנים": "רמת גן",
 };
 
 /**
@@ -98,6 +114,10 @@ const STREET_ALIASES: Record<string, string> = {
  *   "דרך נמיר 301 תל אביב&#x0D;"   -> "דרך נמיר 301"
  *   "אבן גבירול157"                -> "אבן גבירול 157"
  *   "שד` רוטשילד 14"               -> "שדרות רוטשילד 14"
+ *   "שד.הארזים 2"                  -> "שדרות הארזים 2"
+ *   "ככר דיזנגוף 9"                -> "כיכר דיזנגוף 9"
+ *   "4-6 גרפית"                    -> "גרפית 4"
+ *   "קניון גינדי - רחוב קרליבך"    -> "קרליבך"
  * Placeholders like "unknown" give null.
  */
 export function cleanAddress(address: string | null): string | null {
@@ -110,10 +130,12 @@ export function cleanAddress(address: string | null): string | null {
     .trim();
   if (a === "" || /^(unknown|לא ידוע|0)$/i.test(a)) return null;
 
+  a = a.replace(/^.*\s-\s(?=(רח'|רחוב)\s)/, ""); // "קניון גינדי - רחוב קרליבך": the street part
   a = a.replace(/^(רח'|רחוב)\s+/, "");
-  a = a.replace(/^שד['`׳]?\s+/, "שדרות "); // "שד` רוטשילד" -> "שדרות רוטשילד"
+  a = a.replace(/^שד(?:['`׳.]\s*|\s+)/, "שדרות "); // "שד` רוטשילד", "שד.הארזים" -> "שדרות ..."
+  a = a.replace(/(^|\s)ככר(?=\s)/, "$1כיכר");
   // Keep "street number" and drop what follows: corners, notes, neighbourhoods, the city.
-  const m = /^(\d+)\s+(\D+)$/.exec(a); // number first: "1 אחי מאיר"
+  const m = /^(\d+)(?:-\d+)?\s+(\D+)$/.exec(a); // number first: "1 אחי מאיר", "4-6 גרפית"
   if (m) a = `${m[2]} ${m[1]}`;
   const withNumber = /^(\D+?\s\d+[א-ת]?)(\s|$)/.exec(a);
   if (withNumber) a = withNumber[1]!;
