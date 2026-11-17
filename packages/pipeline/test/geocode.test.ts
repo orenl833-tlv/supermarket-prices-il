@@ -2,7 +2,7 @@ import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { upsertChain, upsertStores } from "../src/db/load.js";
 import { migrate } from "../src/db/migrate.js";
-import { cleanAddress, geocodeQuery, geocodeStores, type Geocoder } from "../src/geocode.js";
+import { cleanAddress, geocodeQuery, visible, geocodeStores, type Geocoder } from "../src/geocode.js";
 
 describe("geocodeQuery", () => {
   const store = { chain_code: "7290027600007", store_code: "1", name: "x", city_code: "5000" };
@@ -34,6 +34,11 @@ describe("geocodeQuery", () => {
     expect(cleanAddress("קניון גינדי - רחוב קרליבך")).toBe("קרליבך");
     expect(cleanAddress("לה גרדיה 78")).toBe("לה גווארדיה 78");
     expect(cleanAddress("עמק הברכה")).toBe("עמק ברכה");
+  });
+
+  it("spells out look-alike characters for the log", () => {
+    expect(visible("שד.הארזים 2")).toBe("שד.הארזים 2");
+    expect(visible("ש\u05C1ד\u200f")).toBe("ש\\u{5c1}ד\\u{200f}");
   });
 
   it("looks up streets listed under Tel Aviv in their real city", () => {
