@@ -28,6 +28,7 @@ describe("geocodeQuery", () => {
 
   it("cleans Carrefour's address styles", () => {
     expect(cleanAddress("שד.הארזים 2")).toBe("שדרות הארזים 2");
+    expect(cleanAddress("2 שד.הארזים")).toBe("שדרות הארזים 2"); // as Carrefour publishes it
     expect(cleanAddress("\u200fשד\u05C3הארזים 2")).toBe("שדרות הארזים 2"); // RTL mark, Hebrew sof pasuq
     expect(cleanAddress("ככר דיזנגוף 9")).toBe("כיכר דיזנגוף 9");
     expect(cleanAddress("4-6 גרפית")).toBe("גרפית 4");
@@ -42,7 +43,7 @@ describe("geocodeQuery", () => {
   });
 
   it("looks up streets listed under Tel Aviv in their real city", () => {
-    expect(geocodeQuery({ ...store, address: "שד.האורנים 16" })).toBe("שדרות האורנים 16, רמת גן");
+    expect(geocodeQuery({ ...store, address: "16 שד.האורנים" })).toBe("שדרות האורנים 16, רמת גן");
   });
 });
 

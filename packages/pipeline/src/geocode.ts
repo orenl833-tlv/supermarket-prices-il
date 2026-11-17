@@ -131,14 +131,16 @@ export function cleanAddress(address: string | null): string | null {
     .trim();
   if (a === "" || /^(unknown|לא ידוע|0)$/i.test(a)) return null;
 
+  // Number first ("1 אחי מאיר", "4-6 גרפית", "2 שד.הארזים"): move it to the end
+  // before the prefix rules below, which look at the start of the street.
+  const m = /^(\d+)(?:-\d+)?\s+(\D+)$/.exec(a);
+  if (m) a = `${m[2]} ${m[1]}`;
   a = a.replace(/^.*\s-\s(?=(רח'|רחוב)\s)/, ""); // "קניון גינדי - רחוב קרליבך": the street part
   a = a.replace(/^(רח'|רחוב)\s+/, "");
   // "שד` רוטשילד", "שד.הארזים": any punctuation mark after שד (chains use ' ` ׳ . and others)
   a = a.replace(/^שד(?:[^\s\p{L}\p{N}]\s*|\s+)/u, "שדרות ");
   a = a.replace(/(^|\s)ככר(?=\s)/, "$1כיכר");
   // Keep "street number" and drop what follows: corners, notes, neighbourhoods, the city.
-  const m = /^(\d+)(?:-\d+)?\s+(\D+)$/.exec(a); // number first: "1 אחי מאיר", "4-6 גרפית"
-  if (m) a = `${m[2]} ${m[1]}`;
   const withNumber = /^(\D+?\s\d+[א-ת]?)(\s|$)/.exec(a);
   if (withNumber) a = withNumber[1]!;
   a = a.replace(/\s+(תל אביב|תל-אביב|ת"א).*$/, "").trim();
