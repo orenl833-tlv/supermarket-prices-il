@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Product } from "./api";
-import { bestMatch, splitList } from "./listInput";
+import { chosenOption, matchOptions, OPTIONS_PER_ITEM, splitList } from "./listInput";
 
 const product = (id: number, name: string): Product => ({
   id, name, manufacturer: null, quantity: null, unit: null, isWeighted: false,
@@ -18,17 +18,29 @@ describe("splitList", () => {
   });
 });
 
-describe("bestMatch", () => {
-  it("prefers the category suggestion, as 'any brand'", () => {
+describe("matchOptions", () => {
+  it("offers the category first, as 'any brand', then the search results", () => {
     const milk = product(1, "חלב 3% 1 ליטר");
-    expect(bestMatch("חלב", { products: [product(2, "שוקו")], suggestion: { category: "חלב", product: milk } })).toEqual(
-      { term: "חלב", product: milk, anyBrand: true },
-    );
+    const choco = product(2, "שוקו");
+    const m = matchOptions("חלב", { products: [milk, choco], suggestion: { category: "חלב", product: milk } });
+    expect(m.options.map((o) => [o.label, o.anyBrand])).toEqual([
+      ["חלב, כל מותג", true],
+      ["חלב 3% 1 ליטר", false],
+      ["שוקו", false],
+    ]);
+    expect(chosenOption(m)?.anyBrand).toBe(true);
   });
 
-  it("falls back to the top result, or nothing", () => {
+  it("chooses the top result when there is no category, and nothing when nothing matched", () => {
     const rice = product(3, "אורז פרסי");
-    expect(bestMatch("אורז", { products: [rice], suggestion: null })).toEqual({ term: "אורז", product: rice, anyBrand: false });
-    expect(bestMatch("קוויאר", { products: [], suggestion: null }).product).toBeNull();
+    expect(chosenOption(matchOptions("אורז", { products: [rice], suggestion: null }))?.product).toBe(rice);
+    const none = matchOptions("קוויאר", { products: [], suggestion: null });
+    expect(none.chosen).toBeNull();
+    expect(chosenOption(none)).toBeNull();
+  });
+
+  it("caps the number of products offered", () => {
+    const many = Array.from({ length: 20 }, (_, i) => product(i, `מוצר ${i}`));
+    expect(matchOptions("מוצר", { products: many, suggestion: null }).options).toHaveLength(OPTIONS_PER_ITEM);
   });
 });
