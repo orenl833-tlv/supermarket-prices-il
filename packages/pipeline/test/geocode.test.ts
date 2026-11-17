@@ -31,7 +31,7 @@ describe("geocodeQuery", () => {
     expect(cleanAddress("2 שד.הארזים")).toBe("שדרות הארזים 2"); // as Carrefour publishes it
     expect(cleanAddress("\u200fשד\u05C3הארזים 2")).toBe("שדרות הארזים 2"); // RTL mark, Hebrew sof pasuq
     expect(cleanAddress("ככר דיזנגוף 9")).toBe("כיכר דיזנגוף 9");
-    expect(cleanAddress("4-6 גרפית")).toBe("גרפית 4");
+    expect(cleanAddress("4-6 גרפית")).toBe("מבוא גרופית 4");
     expect(cleanAddress("קניון גינדי - רחוב קרליבך")).toBe("קרליבך");
     expect(cleanAddress("לה גרדיה 78")).toBe("לה גווארדיה 78");
     expect(cleanAddress("עמק הברכה")).toBe("עמק ברכה");
