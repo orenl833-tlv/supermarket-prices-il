@@ -149,6 +149,17 @@ export function cleanAddress(address: string | null): string | null {
   return a || null;
 }
 
+/**
+ * Spell out characters that are not plain Hebrew letters, digits, spaces or
+ * common punctuation, so a log shows what a look-alike character really is:
+ * "שד\u{5c3}הארזים" instead of a dot that does not match the cleanup rules.
+ */
+export function visible(text: string): string {
+  return [...text]
+    .map((c) => (/[\u05D0-\u05EA\w\s.,'"()\-]/.test(c) ? c : `\\u{${c.codePointAt(0)!.toString(16)}}`))
+    .join("");
+}
+
 /** "דרויאנוב 5" -> "דרויאנוב": a street-level fallback when the house is not found. */
 export function streetOnly(street: string): string | null {
   const s = street.replace(/\s\d+[א-ת]?$/, "").trim();
@@ -231,8 +242,7 @@ export async function geocodeStores(
       hit = streetHit && { ...streetHit, precision: "street" };
     }
     if (!hit) {
-      // JSON.stringify shows invisible characters in the log, e.g. "\u200f".
-      failed.push(`${store.name}: no match for ${JSON.stringify(query)}`);
+      failed.push(`${store.name}: no match for "${visible(query)}" (address "${visible(store.address ?? "")}")`);
       continue;
     }
     await pool.query(
