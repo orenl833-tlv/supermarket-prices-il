@@ -40,7 +40,10 @@ export function nominatimLookup(fetchFn: typeof fetch = fetch): AddressLookup {
         "accept-language": "he",
       })}`;
       try {
-        const res = await fetchFn(url, { headers: { "user-agent": USER_AGENT } });
+        const res = await fetchFn(url, {
+          headers: { "user-agent": USER_AGENT, referer: "https://supermarket-prices-il.onrender.com/" },
+          signal: AbortSignal.timeout(10_000),
+        });
         if (!res.ok) throw new Error(`Nominatim: HTTP ${res.status}`);
         const [hit] = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
         return hit ? { lat: Number(hit.lat), lon: Number(hit.lon), label: shortLabel(hit.display_name) } : null;

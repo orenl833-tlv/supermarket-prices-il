@@ -62,8 +62,11 @@ export function buildServer(
     async (req, reply) => {
       try {
         return { place: await lookup(req.query.q) };
-      } catch {
-        return reply.code(502).send({ error: "Address search is unavailable" });
+      } catch (err) {
+        // The cause (e.g. "Nominatim: HTTP 403") is not secret and helps diagnose a failing deploy.
+        const detail = err instanceof Error ? err.message : String(err);
+        req.log.warn({ detail }, "address search failed");
+        return reply.code(502).send({ error: "Address search is unavailable", detail });
       }
     },
   );
