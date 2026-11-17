@@ -23,10 +23,10 @@ export function ResultsMap({ origin, plans }: { origin: { lat: number; lon: numb
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(map);
 
-      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#0f766e";
+      const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#7a5800";
       const points: Array<[number, number]> = [[origin.lat, origin.lon]];
 
-      L.circleMarker([origin.lat, origin.lon], { radius: 7, color: "#1d4ed8", fillColor: "#3b82f6", fillOpacity: 1, weight: 2 })
+      L.circleMarker([origin.lat, origin.lon], { radius: 7, color: "#2b2105", fillColor: "#e3b23c", fillOpacity: 1, weight: 2 })
         .bindTooltip("נקודת היציאה", { direction: "top" })
         .addTo(map);
 
@@ -40,8 +40,8 @@ export function ResultsMap({ origin, plans }: { origin: { lat: number; lon: numb
           points.push([store.lat, store.lon]);
           L.circleMarker([store.lat, store.lon], {
             radius: isBest ? 9 : 6,
-            color: isBest ? accent : "#64748b",
-            fillColor: isBest ? accent : "#94a3b8",
+            color: isBest ? accent : "#8f6a0f",
+            fillColor: isBest ? accent : "#f7d55c",
             fillOpacity: isBest ? 0.9 : 0.6,
             weight: 2,
           })
