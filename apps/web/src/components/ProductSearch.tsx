@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { searchProducts, type Product, type SearchResult } from "../api";
 import { money, size, unitPrice } from "../format";
-import { bestMatch, splitList, type ListMatch } from "../listInput";
+import { chosenOption, matchOptions, splitList, type ListMatch, type ListOption } from "../listInput";
 
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
 export function ProductSearch({
@@ -30,7 +30,7 @@ export function ProductSearch({
       const timer = setTimeout(() => {
         setLoading(true);
         setFailed(false);
-        Promise.all(items.map((term) => searchProducts(term, controller.signal).then((r) => bestMatch(term, r))))
+        Promise.all(items.map((term) => searchProducts(term, controller.signal).then((r) => matchOptions(term, r))))
           .then(setListMatches)
           .catch((err: unknown) => {
             if (!(err instanceof DOMException && err.name === "AbortError")) setFailed(true);
@@ -91,8 +91,11 @@ export function ProductSearch({
         <ListPreview
           matches={listMatches}
           inBasket={inBasket}
+          onChoose={(i, chosen) =>
+            setListMatches((ms) => ms && ms.map((m, j) => (j === i ? { ...m, chosen } : m)))
+          }
           onAddAll={(toAdd) => {
-            for (const m of toAdd) onAdd(m.product!, { anyBrand: m.anyBrand });
+            for (const o of toAdd) onAdd(o.product, { anyBrand: o.anyBrand });
             setQuery("");
           }}
         />
@@ -158,34 +161,57 @@ export function ProductSearch({
   );
 }
 
-/** What each item of a typed list matched, with one button to add them all. */
+/**
+ * What each item of a typed list matched. Each item has a menu to pick
+ * another product (or the whole category) or to leave it out, then one
+ * button adds them all.
+ */
 function ListPreview({
   matches,
   inBasket,
+  onChoose,
   onAddAll,
 }: {
   matches: ListMatch[];
   inBasket: Set<number>;
-  onAddAll: (toAdd: ListMatch[]) => void;
+  onChoose: (index: number, chosen: number | null) => void;
+  onAddAll: (toAdd: ListOption[]) => void;
 }) {
-  const toAdd = matches.filter((m) => m.product && !inBasket.has(m.product.id));
+  const toAdd = matches
+    .map(chosenOption)
+    .filter((o): o is ListOption => o !== null && !inBasket.has(o.product.id));
   return (
     <div className="list-preview" aria-label="רשימה שהוקלדה">
       <ul>
-        {matches.map((m) => (
-          <li key={m.term}>
-            <strong>{m.term}</strong>
-            {" ← "}
-            {m.product ? (
-              <span>
-                {m.anyBrand ? "כל מותג" : m.product.name}
-                {m.product && inBasket.has(m.product.id) && <span className="muted small"> (כבר ברשימה)</span>}
-              </span>
-            ) : (
-              <span className="muted">לא נמצא, נסו מילה אחרת</span>
-            )}
-          </li>
-        ))}
+        {matches.map((m, i) => {
+          const chosen = chosenOption(m);
+          return (
+            <li key={m.term}>
+              <label className="list-term" htmlFor={`list-item-${i}`}>
+                {m.term}
+              </label>
+              {m.options.length > 0 ? (
+                <select
+                  id={`list-item-${i}`}
+                  className="input"
+                  value={m.chosen ?? "skip"}
+                  onChange={(e) => onChoose(i, e.target.value === "skip" ? null : Number(e.target.value))}
+                >
+                  {m.options.map((o, k) => (
+                    <option key={k} value={k}>
+                      {o.label}
+                      {o.anyBrand ? "" : ` · ${money(o.product.minPrice)}`}
+                    </option>
+                  ))}
+                  <option value="skip">לא להוסיף</option>
+                </select>
+              ) : (
+                <span className="muted">לא נמצא, נסו מילה אחרת</span>
+              )}
+              {chosen && inBasket.has(chosen.product.id) && <span className="muted small">כבר ברשימה</span>}
+            </li>
+          );
+        })}
       </ul>
       <button className="primary" disabled={toAdd.length === 0} onClick={() => onAddAll(toAdd)}>
         הוספת {toAdd.length} מוצרים לרשימה

@@ -548,3 +548,11 @@ footer {
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
 }
+
+.list-preview li {
+  display: grid;
+  gap: 4px;
+}
+.list-term {
+  font-weight: 700;
+}

@@ -131,6 +131,15 @@ test("adds a typed comma-separated list in one go", async ({ page }) => {
   await expect(page.locator(".basket-item")).toHaveCount(2);
 });
 
+test("lets each item of a typed list be changed or left out", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("חלב, לחם");
+  const preview = page.getByLabel("רשימה שהוקלדה");
+  await preview.getByLabel("לחם").selectOption({ label: "לא להוסיף" });
+  await preview.getByRole("button", { name: "הוספת 1 מוצרים לרשימה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(1);
+  await expect(page.locator(".basket-item")).toContainText("חלב");
+});
+
 test("shows the address that 'my location' resolved to", async ({ page, context }) => {
   await context.grantPermissions(["geolocation"]);
   await context.setGeolocation({ latitude: 32.0775, longitude: 34.7755, accuracy: 25 });

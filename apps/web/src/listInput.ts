@@ -14,18 +14,45 @@ export function splitList(text: string): string[] | null {
   return items.length >= 2 ? items.slice(0, 20) : null;
 }
 
-export interface ListMatch {
-  term: string;
-  product: Product | null;
-  /** True when the match is a whole category ("milk, any brand"). */
+/** One way to fill a list item: a product, or a whole category ("any brand"). */
+export interface ListOption {
+  product: Product;
   anyBrand: boolean;
+  /** What the user sees in the menu. */
+  label: string;
 }
 
+export interface ListMatch {
+  term: string;
+  /** Choices for this item, best first. */
+  options: ListOption[];
+  /** Index into options, or null to leave the item out. */
+  chosen: number | null;
+}
+
+/** How many products each item offers besides the category. */
+export const OPTIONS_PER_ITEM = 6;
+
 /**
- * The best match for one item of a typed list: a category item ("any brand")
- * when the word names one, otherwise the top search result.
+ * The choices for one item of a typed list: the category as "any brand" when
+ * the word names one, then the top search results. The first is chosen.
  */
-export function bestMatch(term: string, result: SearchResult): ListMatch {
-  if (result.suggestion) return { term, product: result.suggestion.product, anyBrand: true };
-  return { term, product: result.products[0] ?? null, anyBrand: false };
+export function matchOptions(term: string, result: SearchResult): ListMatch {
+  const options: ListOption[] = [];
+  if (result.suggestion) {
+    options.push({
+      product: result.suggestion.product,
+      anyBrand: true,
+      label: `${result.suggestion.category}, כל מותג`,
+    });
+  }
+  for (const p of result.products.slice(0, OPTIONS_PER_ITEM)) {
+    options.push({ product: p, anyBrand: false, label: p.name });
+  }
+  return { term, options, chosen: options.length > 0 ? 0 : null };
+}
+
+/** The choice that will be added for an item, if any. */
+export function chosenOption(m: ListMatch): ListOption | null {
+  return m.chosen === null ? null : (m.options[m.chosen] ?? null);
 }
