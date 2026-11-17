@@ -130,3 +130,13 @@ test("adds a typed comma-separated list in one go", async ({ page }) => {
   await preview.getByRole("button", { name: "הוספת 2 מוצרים לרשימה" }).click();
   await expect(page.locator(".basket-item")).toHaveCount(2);
 });
+
+test("shows the address that 'my location' resolved to", async ({ page, context }) => {
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 32.0775, longitude: 34.7755, accuracy: 25 });
+  // The address lookup goes to OpenStreetMap; the test answers it itself.
+  await page.route("**/api/reverse?*", (route) => route.fulfill({ json: { address: "דיזנגוף 50, לב העיר" } }));
+  await page.getByRole("button", { name: "המיקום שלי" }).click();
+  await expect(page.getByText("זוהתה הכתובת דיזנגוף 50, לב העיר · דיוק של כ-25 מ'")).toBeVisible();
+  await expect(page.getByLabel("מאיפה יוצאים")).toContainText("המיקום שלי: דיזנגוף 50, לב העיר");
+});

@@ -119,3 +119,10 @@ export async function geocodeAddress(q: string): Promise<{ lat: number; lon: num
   if (!res.ok) throw new Error(`geocode failed: ${res.status}`);
   return (await res.json()).place;
 }
+
+/** The street address nearest to a position ("דיזנגוף 50, לב העיר"), or null. */
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  const res = await fetch(`/api/reverse?lat=${lat}&lon=${lon}`);
+  if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
+  return (await res.json()).address;
+}
