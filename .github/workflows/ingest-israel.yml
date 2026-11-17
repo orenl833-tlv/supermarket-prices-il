@@ -1,0 +1,37 @@
+name: Daily ingest (Israel)
+
+# Carrefour and Victory block foreign IP addresses, so they are loaded by a
+# self-hosted runner on the owner's Windows computer in Israel (label "israel").
+# The other four chains stay on GitHub's runners (ingest.yml) and never
+# depend on that computer.
+#
+# If the computer is off, the run waits in the queue (up to 24 hours) and
+# starts when it comes back; until then the site flags those two chains'
+# prices as out of date. Steps avoid shell syntax so they work in PowerShell.
+on:
+  schedule:
+    - cron: "50 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ingest-israel
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: [self-hosted, israel]
+    timeout-minutes: 30
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ISRAEL_CHAINS: only
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Ingest Carrefour and Victory
+        run: npm run ingest -w @spil/pipeline

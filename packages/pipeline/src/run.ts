@@ -24,18 +24,20 @@ import { checkPriceFile } from "./quality.js";
  * the end so the scheduler marks the run as failed.
  */
 /**
- * Carrefour and Victory only answer Israeli IP addresses, so they are loaded
- * only where the pipeline runs from Israel (ISRAEL_CHAINS=1). Elsewhere they
- * would just time out every day.
+ * Carrefour and Victory only answer Israeli IP addresses. ISRAEL_CHAINS picks
+ * what a run loads:
+ *   unset   the four chains reachable from anywhere (GitHub-hosted runs)
+ *   "only"  just Carrefour and Victory (the self-hosted runner in Israel)
+ *   "1"     all six (a full run from an Israeli machine)
  */
 const ISRAEL_ONLY: ChainSource[] = [carrefour, victory];
-const CHAINS: ChainSource[] = [
-  shufersal,
-  ramiLevy,
-  doralon,
-  yochananof,
-  ...(process.env.ISRAEL_CHAINS === "1" ? ISRAEL_ONLY : []),
-];
+const ANYWHERE: ChainSource[] = [shufersal, ramiLevy, doralon, yochananof];
+const CHAINS: ChainSource[] =
+  process.env.ISRAEL_CHAINS === "only"
+    ? ISRAEL_ONLY
+    : process.env.ISRAEL_CHAINS === "1"
+      ? [...ANYWHERE, ...ISRAEL_ONLY]
+      : ANYWHERE;
 const AREA = areaFromEnv();
 
 type Outcome = "loaded" | "skipped" | "rejected" | "failed";
