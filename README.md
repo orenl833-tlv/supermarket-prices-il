@@ -14,7 +14,7 @@ Under Israel's food price transparency law, large supermarket chains publish the
 
 **What it does**
 
-- Compares a whole shopping list across the branches within walking distance (4 chains, 74 Tel Aviv branches), optionally splitting it across two stores when that saves enough.
+- Compares a whole shopping list across the branches within walking distance (6 chains, 106 Tel Aviv branches), optionally splitting it across two stores when that saves enough.
 - Offers close substitutes when a store lacks the exact product, priced as the whole packs you would actually buy; "any brand" items take the cheapest close product in each store.
 - Search by name or barcode, with price per litre, kg or egg; typing a category ("ביצים") offers "eggs, any brand" in one tap.
 - Shows the results on a map, shares a list as a link (WhatsApp-friendly, no accounts), installs on a phone and opens the list without a connection.
@@ -24,11 +24,11 @@ Under Israel's food price transparency law, large supermarket chains publish the
 
 ## Status
 
-Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Four chains, 74 branches; Carrefour and Victory are loaded by a self-hosted runner in Israel (their portals block foreign IPs).
+Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Six chains, 106 branches. Four are loaded on GitHub's runners; Carrefour and Victory block foreign IPs and are loaded by a self-hosted runner in Israel.
 
 - [x] Repository skeleton
-- [x] Ingest pipeline: download, parse, quality checks, load (74 Tel Aviv branches, about a minute)
-- [x] Branch coordinates (all 74 branches; one address supplied by hand)
+- [x] Ingest pipeline: download, parse, quality checks, load (106 Tel Aviv branches, a few minutes)
+- [x] Branch coordinates (105 of 106 branches; one is on a street OpenStreetMap lacks)
 - [x] Scheduled daily run (`.github/workflows/ingest.yml`), active once a `DATABASE_URL` secret is set
 - [x] Hosted Postgres (Neon), loaded by the daily run
 - [x] Basket optimization engine (one or two stores, missing-item penalties)
