@@ -28,7 +28,7 @@ Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Six chains,
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (106 Tel Aviv branches, a few minutes)
-- [x] Branch coordinates (105 of 106 branches; one is on a street OpenStreetMap lacks)
+- [x] Branch coordinates (all 106 branches; one address supplied by hand)
 - [x] Scheduled daily run (`.github/workflows/ingest.yml`), active once a `DATABASE_URL` secret is set
 - [x] Hosted Postgres (Neon), loaded by the daily run
 - [x] Basket optimization engine (one or two stores, missing-item penalties)

@@ -93,6 +93,9 @@ const STREET_ALIASES: Record<string, string> = {
   "לה גוארדיה": "לה גווארדיה",
   "עמק הברכה": "עמק ברכה",
   "גרינבאום": "גרינבוים",
+  // Carrefour Ramot Tzahala: published as "4-6 גרפית"; OSM and Google call it מבוא גרופית
+  // (Google places the branch at 32.1207, 34.8288, about 35 m from OSM's street).
+  "גרפית": "מבוא גרופית",
 };
 
 /**
