@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { geocodeAddress } from "../api";
+import { geocodeAddress, reverseGeocode } from "../api";
 export interface Location {
   label: string;
   lat: number;
@@ -34,6 +34,8 @@ export function Settings({
   const isPreset = PLACES.some((p) => p.label === value.location.label);
 
   const [status, setStatus] = useState<string | null>(null);
+  /** What "my location" resolved to, so the user can check it. */
+  const [found, setFound] = useState<string | null>(null);
   const [address, setAddress] = useState("");
   const [searching, setSearching] = useState(false);
 
@@ -43,11 +45,24 @@ export function Settings({
       return;
     }
     setStatus("מאתר מיקום…");
+    setFound(null);
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const location = { label: "המיקום שלי", lat: pos.coords.latitude, lon: pos.coords.longitude };
-        set({ location });
-        setStatus(isNearTelAviv(location) ? null : "המיקום שלך רחוק מתל אביב, ולכן לא יימצאו סופרים קרובים.");
+      async (pos) => {
+        const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+        const near = isNearTelAviv({ lat, lon });
+        setStatus(near ? null : "המיקום שלך רחוק מתל אביב, ולכן לא יימצאו סופרים קרובים.");
+        const accuracyNote =
+          accuracy > 300
+            ? ` · דיוק נמוך (כ-${Math.round(accuracy)} מ'), אם הכתובת לא נכונה כדאי להקליד אותה`
+            : ` · דיוק של כ-${Math.round(accuracy)} מ'`;
+        let address: string | null = null;
+        try {
+          address = await reverseGeocode(lat, lon);
+        } catch {
+          /* the coordinates are still usable without a street name */
+        }
+        set({ location: { label: address ? `המיקום שלי: ${address}` : "המיקום שלי", lat, lon } });
+        setFound(`${address ? `זוהתה הכתובת ${address}` : "המיקום התקבל, אבל לא מצאנו לו כתובת"}${accuracyNote}`);
       },
       (err) => setStatus(LOCATION_ERRORS[err.code] ?? LOCATION_ERRORS[0]!),
       // A location from the last 10 minutes is fine; desktops without GPS can be slow.
@@ -62,7 +77,10 @@ export function Settings({
     setStatus(null);
     try {
       const place = await geocodeAddress(address.trim());
-      if (place) set({ location: place });
+      if (place) {
+        set({ location: place });
+        setFound(null);
+      }
       else setStatus("לא מצאנו את הכתובת בתל אביב. נסו רחוב ומספר, למשל: דיזנגוף 50.");
     } catch {
       setStatus("חיפוש הכתובת לא זמין כרגע. אפשר לבחור אזור מהרשימה.");
@@ -85,7 +103,10 @@ export function Settings({
           value={isPreset ? value.location.label : ""}
           onChange={(e) => {
             const place = PLACES.find((p) => p.label === e.target.value);
-            if (place) set({ location: place });
+            if (place) {
+        set({ location: place });
+        setFound(null);
+      }
           }}
         >
           {!isPreset && <option value="">{value.location.label}</option>}
@@ -112,6 +133,11 @@ export function Settings({
           {searching ? "מחפש…" : "חיפוש"}
         </button>
       </form>
+      {found && (
+        <p className="note small" role="status">
+          {found}
+        </p>
+      )}
       {status && (
         <p className="warn small" role="status">
           {status}

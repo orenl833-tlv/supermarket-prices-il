@@ -2,7 +2,7 @@ import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
-import { nominatimLookup, type AddressLookup } from "./geocode.js";
+import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
   categorySuggestion,
   currentPrices,
@@ -28,10 +28,12 @@ interface CompareBody {
 
 export function buildServer(
   db: pg.Pool,
-  opts: { logger?: boolean; webRoot?: string; lookup?: AddressLookup } = {},
+  opts: { logger?: boolean; webRoot?: string; lookup?: AddressLookup; reverse?: ReverseLookup } = {},
 ): FastifyInstance {
   const app = Fastify({ logger: opts.logger ?? false });
-  const lookup = opts.lookup ?? nominatimLookup();
+  const geocoder = opts.lookup && opts.reverse ? null : nominatim();
+  const lookup = opts.lookup ?? geocoder!.search;
+  const reverse = opts.reverse ?? geocoder!.reverse;
 
   // In production the API also serves the built web app, so the whole site is one service.
   if (opts.webRoot) {
@@ -46,6 +48,33 @@ export function buildServer(
   }
 
   app.get("/api/health", async () => ({ ok: true }));
+
+  // The street address of "my location", so the user can check it is right.
+  app.get<{ Querystring: { lat: number; lon: number } }>(
+    "/api/reverse",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["lat", "lon"],
+          properties: {
+            // Israel and its surroundings; anything else is a mistake or abuse.
+            lat: { type: "number", minimum: 29, maximum: 34 },
+            lon: { type: "number", minimum: 34, maximum: 36 },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      try {
+        return { address: await reverse(req.query.lat, req.query.lon) };
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        req.log.warn({ detail }, "reverse lookup failed");
+        return reply.code(502).send({ error: "Reverse lookup is unavailable", detail });
+      }
+    },
+  );
 
   // A typed starting address ("דיזנגוף 50"), for when the browser cannot give a location.
   app.get<{ Querystring: { q: string } }>(

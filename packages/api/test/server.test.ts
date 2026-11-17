@@ -69,6 +69,7 @@ describe.skipIf(!url)("API", () => {
 
     app = buildServer(pool, {
       lookup: async (q) => (q.includes("דיזנגוף") ? { lat: 32.0779, lon: 34.7738, label: "דיזנגוף 50" } : null),
+      reverse: async () => "דיזנגוף 50, לב העיר",
     });
   });
 
@@ -239,6 +240,12 @@ describe.skipIf(!url)("API", () => {
     const missing = await app.inject({ url: `/api/geocode?q=${encodeURIComponent("אין כזה")}` });
     expect(missing.json()).toEqual({ place: null });
     expect((await app.inject({ url: "/api/geocode?q=x" })).statusCode).toBe(400);
+  });
+
+  it("names the street of a position, and refuses positions outside Israel", async () => {
+    const res = await app.inject({ url: "/api/reverse?lat=32.0775&lon=34.7755" });
+    expect(res.json()).toEqual({ address: "דיזנגוף 50, לב העיר" });
+    expect((await app.inject({ url: "/api/reverse?lat=48.85&lon=2.35" })).statusCode).toBe(400);
   });
 
   it("reports data freshness per chain", async () => {
