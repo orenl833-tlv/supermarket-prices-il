@@ -145,7 +145,7 @@ export function Settings({
       )}
 
       <label className="label" htmlFor="radius">
-        מרחק הליכה: עד {value.radiusKm} ק"מ
+        מרחק בקו אווירי: עד {value.radiusKm} ק"מ
       </label>
       <input
         id="radius"
