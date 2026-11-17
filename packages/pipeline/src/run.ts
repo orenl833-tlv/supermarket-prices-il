@@ -121,8 +121,14 @@ async function ingestStore(
 
   try {
     const parsed = parsePriceFull(decodeFile(await chain.download(file)));
-    if (parsed.chainCode !== chain.code || parsed.storeCode !== storeCode) {
-      throw new Error(`file is for ${parsed.chainCode}/${parsed.storeCode}`);
+    // The file must be the chain's. The store number inside it may differ from
+    // the one in the file name: Carrefour renumbered branches (e.g. the file
+    // for 408 says StoreId 119). The name matches the branch list, so it wins.
+    if (parsed.chainCode !== chain.code) {
+      throw new Error(`file is for chain ${parsed.chainCode}`);
+    }
+    if (parsed.storeCode !== storeCode) {
+      console.log(`${label}: file name says ${storeCode}, contents say ${parsed.storeCode}; using the name`);
     }
 
     const { rows: prev } = await pool.query<{ items_read: number }>(
