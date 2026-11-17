@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#0f766e"/>
+  <rect width="512" height="512" rx="112" fill="#e3b23c"/>
+  <!-- corn and pepper peeking out of the basket, in shades of yellow -->
+  <ellipse cx="214" cy="170" rx="34" ry="78" fill="#fdf0b8"/>
+  <path d="M296 150c0-28 24-40 50-32 26-8 50 6 50 32 0 30-10 60-22 70H318c-12-10-22-40-22-70z" fill="#f7d55c"/>
+  <path d="M346 118c4-18 18-24 28-20" stroke="#8f6a0f" stroke-width="12" stroke-linecap="round" fill="none"/>
   <!-- basket -->
-  <path d="M120 210h272l-28 170a28 28 0 0 1-28 24H176a28 28 0 0 1-28-24z" fill="#ffffff"/>
-  <path d="M176 210l56-90M336 210l-56-90" stroke="#ffffff" stroke-width="28" stroke-linecap="round" fill="none"/>
-  <path d="M200 260v100M256 260v100M312 260v100" stroke="#0f766e" stroke-width="20" stroke-linecap="round"/>
+  <path d="M112 226h288l-30 160a30 30 0 0 1-30 24H172a30 30 0 0 1-30-24z" fill="#2b2105"/>
+  <path d="M190 270v96M256 270v96M322 270v96" stroke="#e3b23c" stroke-width="20" stroke-linecap="round"/>
 </svg>

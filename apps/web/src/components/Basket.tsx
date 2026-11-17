@@ -1,3 +1,4 @@
+import { Vegetable } from "./Veggies";
 import type { BasketEntry, Importance } from "../api";
 import { useState } from "react";
 import { size } from "../format";
@@ -47,6 +48,7 @@ export function Basket({
   if (entries.length === 0) {
     return (
       <section className="card empty">
+        <Vegetable kind="pepper" size={56} className="empty-veg" />
         <p>הסל ריק. חפשו מוצרים והוסיפו אותם לרשימה.</p>
       </section>
     );

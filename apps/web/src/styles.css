@@ -1,28 +1,44 @@
 :root {
-  --bg: #f6f7f5;
-  --card: #ffffff;
-  --text: #1c2321;
-  --muted: #5f6b67;
-  --border: #dfe4e1;
-  --accent: #0f766e;
-  --accent-soft: #e3f3f1;
-  --warn: #9a4b00;
-  --warn-soft: #fff4e5;
-  --radius: 12px;
+  /* Light mustard theme. Text colours meet WCAG AA on every background they sit on. */
+  --bg: #f8e9b5;
+  --card: #fffbeb;
+  --text: #2b2105;
+  --muted: #665010;
+  --border: #ebd48a;
+  --accent: #7a5800; /* text and outlines */
+  --accent-fill: #e3b23c; /* mustard buttons and badges */
+  --on-accent: #2b2105;
+  --accent-soft: #fcefc3;
+  --warn: #8a3a00;
+  --warn-soft: #ffe9cc;
+  --radius: 16px;
+  /* Vegetable illustrations: shades of yellow only. */
+  --veg-light: #fdf0b8;
+  --veg-mid: #f7d55c;
+  --veg-main: #e8b830;
+  --veg-deep: #c8961e;
+  --veg-dark: #8f6a0f;
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121615;
-    --card: #1b2120;
-    --text: #e8eeec;
-    --muted: #9aa7a3;
-    --border: #2d3634;
-    --accent: #2dd4bf;
-    --accent-soft: #163a36;
+    --bg: #1c170a;
+    --card: #272010;
+    --text: #f8eed2;
+    --muted: #c9b98a;
+    --border: #43391d;
+    --accent: #f2cc4e;
+    --accent-fill: #e3b23c;
+    --on-accent: #1c170a;
+    --accent-soft: #3a2f12;
     --warn: #f5b26b;
     --warn-soft: #3a2a17;
+    --veg-light: #fbe9a6;
+    --veg-mid: #f2cc4e;
+    --veg-main: #dcaa2c;
+    --veg-deep: #b9891a;
+    --veg-dark: #8a650d;
     color-scheme: dark;
   }
 }
@@ -35,7 +51,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  font-family: "Rubik", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
   font-size: 16px;
   line-height: 1.5;
 }
@@ -46,15 +62,71 @@ body {
   padding: 16px;
 }
 
+/* Header: a mustard banner with a row of vegetables. */
+.top {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 16px;
+  padding: 20px 20px 12px;
+  border-radius: 24px;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
 .top h1 {
-  margin: 8px 0 4px;
-  font-size: 28px;
-  color: var(--accent);
+  margin: 0 0 4px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
 }
 
 .top p {
-  margin: 0 0 16px;
-  color: var(--muted);
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+
+.veggie-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+.veg {
+  flex: none;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.12));
+}
+
+.veg-1,
+.veg-3,
+.veg-5 {
+  transform: rotate(-8deg);
+}
+
+.veg-0,
+.veg-4 {
+  transform: rotate(6deg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .veg {
+    animation: bob 4s ease-in-out infinite;
+  }
+  .veg-1 { animation-delay: -1s; }
+  .veg-2 { animation-delay: -2s; }
+  .veg-3 { animation-delay: -3s; }
+  .veg-4 { animation-delay: -1.5s; }
+  .veg-5 { animation-delay: -2.5s; }
+}
+
+@keyframes bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -3px; }
+}
+
+.empty-veg {
+  display: block;
+  margin: 0 auto 4px;
 }
 
 main {
@@ -155,19 +227,14 @@ button:disabled {
 }
 
 .primary {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-fill);
+  color: var(--on-accent);
+  box-shadow: 0 3px 0 var(--veg-deep);
   border: none;
   border-radius: var(--radius);
   padding: 14px;
   font-size: 18px;
   font-weight: 700;
-}
-
-@media (prefers-color-scheme: dark) {
-  .primary {
-    color: #06201d;
-  }
 }
 
 .secondary {
@@ -295,8 +362,8 @@ button:disabled {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--card);
+  background: var(--accent-fill);
+  color: var(--on-accent);
   font-weight: 700;
 }
 
@@ -389,13 +456,14 @@ button:disabled {
 }
 
 .plan.best {
-  border: 2px solid var(--accent);
+  border: 2px solid var(--accent-fill);
+  box-shadow: 0 4px 0 var(--veg-deep);
 }
 
 .badge {
   display: inline-block;
-  background: var(--accent);
-  color: var(--card);
+  background: var(--accent-fill);
+  color: var(--on-accent);
   font-size: 13px;
   font-weight: 700;
   border-radius: 999px;

@@ -6,6 +6,7 @@ import { Results } from "./components/Results";
 import { PLACES, Settings, type SearchSettings } from "./components/Settings";
 import { age, storage } from "./format";
 import { decodeList } from "./share";
+import { VeggieRow } from "./components/Veggies";
 
 const DEFAULT_SETTINGS: SearchSettings = {
   location: PLACES[0]!,
@@ -99,6 +100,7 @@ export function App() {
       <header className="top">
         <h1>הסל הזול</h1>
         <p>איפה הכי זול לקנות את כל הרשימה, בסופרים שקרובים אליכם בתל אביב.</p>
+        <VeggieRow />
       </header>
 
       <main>
