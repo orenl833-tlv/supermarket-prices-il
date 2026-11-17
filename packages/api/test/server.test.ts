@@ -67,7 +67,9 @@ describe.skipIf(!url)("API", () => {
 
     await classifyProducts(pool);
 
-    app = buildServer(pool);
+    app = buildServer(pool, {
+      lookup: async (q) => (q.includes("דיזנגוף") ? { lat: 32.0779, lon: 34.7738, label: "דיזנגוף 50" } : null),
+    });
   });
 
   afterAll(async () => {
@@ -229,6 +231,14 @@ describe.skipIf(!url)("API", () => {
       expect((await search(q)).map((p: { name: string }) => p.name), q).toEqual(["גבינת קוטג׳ 5%"]);
     }
     expect(await search("'\"")).toEqual([]);
+  });
+
+  it("looks up a typed starting address", async () => {
+    const found = await app.inject({ url: `/api/geocode?q=${encodeURIComponent("דיזנגוף 50")}` });
+    expect(found.json()).toEqual({ place: { lat: 32.0779, lon: 34.7738, label: "דיזנגוף 50" } });
+    const missing = await app.inject({ url: `/api/geocode?q=${encodeURIComponent("אין כזה")}` });
+    expect(missing.json()).toEqual({ place: null });
+    expect((await app.inject({ url: "/api/geocode?q=x" })).statusCode).toBe(400);
   });
 
   it("reports data freshness per chain", async () => {

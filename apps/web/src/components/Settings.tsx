@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { geocodeAddress } from "../api";
 export interface Location {
   label: string;
   lat: number;
@@ -31,12 +33,42 @@ export function Settings({
   const set = (patch: Partial<SearchSettings>) => onChange({ ...value, ...patch });
   const isPreset = PLACES.some((p) => p.label === value.location.label);
 
+  const [status, setStatus] = useState<string | null>(null);
+  const [address, setAddress] = useState("");
+  const [searching, setSearching] = useState(false);
+
   function useMyLocation() {
-    navigator.geolocation?.getCurrentPosition(
-      (pos) => set({ location: { label: "המיקום שלי", lat: pos.coords.latitude, lon: pos.coords.longitude } }),
-      () => alert("לא הצלחנו לקבל מיקום. אפשר לבחור אזור מהרשימה."),
-      { timeout: 10_000 },
+    if (!navigator.geolocation) {
+      setStatus("הדפדפן לא תומך במיקום. אפשר להקליד כתובת.");
+      return;
+    }
+    setStatus("מאתר מיקום…");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const location = { label: "המיקום שלי", lat: pos.coords.latitude, lon: pos.coords.longitude };
+        set({ location });
+        setStatus(isNearTelAviv(location) ? null : "המיקום שלך רחוק מתל אביב, ולכן לא יימצאו סופרים קרובים.");
+      },
+      (err) => setStatus(LOCATION_ERRORS[err.code] ?? LOCATION_ERRORS[0]!),
+      // A location from the last 10 minutes is fine; desktops without GPS can be slow.
+      { timeout: 20_000, maximumAge: 600_000 },
     );
+  }
+
+  async function searchAddress(e: React.FormEvent) {
+    e.preventDefault();
+    if (address.trim().length < 2) return;
+    setSearching(true);
+    setStatus(null);
+    try {
+      const place = await geocodeAddress(address.trim());
+      if (place) set({ location: place });
+      else setStatus("לא מצאנו את הכתובת בתל אביב. נסו רחוב ומספר, למשל: דיזנגוף 50.");
+    } catch {
+      setStatus("חיפוש הכתובת לא זמין כרגע. אפשר לבחור אזור מהרשימה.");
+    } finally {
+      setSearching(false);
+    }
   }
 
   return (
@@ -67,6 +99,24 @@ export function Settings({
           המיקום שלי
         </button>
       </div>
+      <form className="row gap address" onSubmit={searchAddress}>
+        <input
+          className="input"
+          type="search"
+          aria-label="כתובת יציאה"
+          placeholder="או כתובת, למשל: דיזנגוף 50"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+        <button className="secondary" type="submit" disabled={searching}>
+          {searching ? "מחפש…" : "חיפוש"}
+        </button>
+      </form>
+      {status && (
+        <p className="warn small" role="status">
+          {status}
+        </p>
+      )}
 
       <label className="label" htmlFor="radius">
         מרחק הליכה: עד {value.radiusKm} ק"מ
@@ -107,4 +157,19 @@ export function Settings({
       )}
     </section>
   );
+}
+
+/** Why the browser gave no location, by GeolocationPositionError code. */
+const LOCATION_ERRORS: Record<number, string> = {
+  0: "לא הצלחנו לקבל מיקום. אפשר להקליד כתובת או לבחור אזור מהרשימה.",
+  1: "הגישה למיקום חסומה בדפדפן. אפשר לאשר אותה בסמל המנעול שליד כתובת האתר, או להקליד כתובת.",
+  2: "המכשיר לא מצליח לאתר מיקום (במחשב: בדקו ששירותי המיקום של Windows פועלים). אפשר להקליד כתובת.",
+  3: "איתור המיקום לקח יותר מדי זמן. נסו שוב או הקלידו כתובת.",
+};
+
+/** Roughly within 15 km of central Tel Aviv: beyond that no branch is in walking range. */
+function isNearTelAviv(p: { lat: number; lon: number }): boolean {
+  const dLat = (p.lat - 32.08) * 111;
+  const dLon = (p.lon - 34.78) * 94;
+  return Math.hypot(dLat, dLon) < 15;
 }

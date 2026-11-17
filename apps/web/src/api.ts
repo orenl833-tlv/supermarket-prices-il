@@ -112,3 +112,10 @@ export async function status(): Promise<ChainStatus[]> {
   if (!res.ok) return [];
   return (await res.json()).chains;
 }
+
+/** A typed starting address in Tel Aviv, or null when nothing matches. */
+export async function geocodeAddress(q: string): Promise<{ lat: number; lon: number; label: string } | null> {
+  const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error(`geocode failed: ${res.status}`);
+  return (await res.json()).place;
+}

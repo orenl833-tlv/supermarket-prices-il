@@ -2,6 +2,7 @@ import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
+import { nominatimLookup, type AddressLookup } from "./geocode.js";
 import {
   categorySuggestion,
   currentPrices,
@@ -27,9 +28,10 @@ interface CompareBody {
 
 export function buildServer(
   db: pg.Pool,
-  opts: { logger?: boolean; webRoot?: string } = {},
+  opts: { logger?: boolean; webRoot?: string; lookup?: AddressLookup } = {},
 ): FastifyInstance {
   const app = Fastify({ logger: opts.logger ?? false });
+  const lookup = opts.lookup ?? nominatimLookup();
 
   // In production the API also serves the built web app, so the whole site is one service.
   if (opts.webRoot) {
@@ -44,6 +46,27 @@ export function buildServer(
   }
 
   app.get("/api/health", async () => ({ ok: true }));
+
+  // A typed starting address ("דיזנגוף 50"), for when the browser cannot give a location.
+  app.get<{ Querystring: { q: string } }>(
+    "/api/geocode",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["q"],
+          properties: { q: { type: "string", minLength: 2, maxLength: 80 } },
+        },
+      },
+    },
+    async (req, reply) => {
+      try {
+        return { place: await lookup(req.query.q) };
+      } catch {
+        return reply.code(502).send({ error: "Address search is unavailable" });
+      }
+    },
+  );
 
   app.get<{ Querystring: { q: string } }>(
     "/api/products",
