@@ -466,3 +466,17 @@ footer {
 .data-panel a {
   color: var(--accent);
 }
+
+.address {
+  margin-top: 8px;
+}
+
+.list-preview ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.list-preview li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}

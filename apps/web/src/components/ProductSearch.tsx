@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { searchProducts, type Product, type SearchResult } from "../api";
 import { money, size, unitPrice } from "../format";
+import { bestMatch, splitList, type ListMatch } from "../listInput";
 
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
 export function ProductSearch({
@@ -15,9 +16,32 @@ export function ProductSearch({
   const [suggestion, setSuggestion] = useState<SearchResult["suggestion"]>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [listMatches, setListMatches] = useState<ListMatch[] | null>(null);
 
   useEffect(() => {
     const q = query.trim();
+    // "חלב, אורז, ביצים": a whole list, one match per item.
+    const items = splitList(q);
+    setListMatches(null);
+    if (items) {
+      setResults([]);
+      setSuggestion(null);
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        setLoading(true);
+        setFailed(false);
+        Promise.all(items.map((term) => searchProducts(term, controller.signal).then((r) => bestMatch(term, r))))
+          .then(setListMatches)
+          .catch((err: unknown) => {
+            if (!(err instanceof DOMException && err.name === "AbortError")) setFailed(true);
+          })
+          .finally(() => setLoading(false));
+      }, 400);
+      return () => {
+        clearTimeout(timer);
+        controller.abort();
+      };
+    }
     if (q.length < 2) {
       setResults([]);
       setSuggestion(null);
@@ -57,12 +81,22 @@ export function ProductSearch({
         id="search"
         className="input"
         type="search"
-        placeholder="למשל: חלב 3%, לחם, קוטג'"
+        placeholder="מוצר אחד, או רשימה עם פסיקים: חלב, לחם, ביצים"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         autoComplete="off"
       />
       {loading && <p className="muted small">מחפש…</p>}
+      {listMatches && (
+        <ListPreview
+          matches={listMatches}
+          inBasket={inBasket}
+          onAddAll={(toAdd) => {
+            for (const m of toAdd) onAdd(m.product!, { anyBrand: m.anyBrand });
+            setQuery("");
+          }}
+        />
+      )}
       {suggestion && !inBasket.has(suggestion.product.id) && (
         <button
           className="suggestion"
@@ -117,9 +151,45 @@ export function ProductSearch({
         </ul>
       )}
       {failed && <p className="warn small">החיפוש לא זמין כרגע. נסו שוב בעוד רגע.</p>}
-      {query.trim().length >= 2 && !loading && !failed && results.length === 0 && (
+      {query.trim().length >= 2 && !loading && !failed && !listMatches && results.length === 0 && (
         <p className="muted small">לא נמצאו מוצרים. נסו מילה אחרת או ברקוד.</p>
       )}
     </section>
+  );
+}
+
+/** What each item of a typed list matched, with one button to add them all. */
+function ListPreview({
+  matches,
+  inBasket,
+  onAddAll,
+}: {
+  matches: ListMatch[];
+  inBasket: Set<number>;
+  onAddAll: (toAdd: ListMatch[]) => void;
+}) {
+  const toAdd = matches.filter((m) => m.product && !inBasket.has(m.product.id));
+  return (
+    <div className="list-preview" aria-label="רשימה שהוקלדה">
+      <ul>
+        {matches.map((m) => (
+          <li key={m.term}>
+            <strong>{m.term}</strong>
+            {" ← "}
+            {m.product ? (
+              <span>
+                {m.anyBrand ? "כל מותג" : m.product.name}
+                {m.product && inBasket.has(m.product.id) && <span className="muted small"> (כבר ברשימה)</span>}
+              </span>
+            ) : (
+              <span className="muted">לא נמצא, נסו מילה אחרת</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <button className="primary" disabled={toAdd.length === 0} onClick={() => onAddAll(toAdd)}>
+        הוספת {toAdd.length} מוצרים לרשימה
+      </button>
+    </div>
   );
 }

@@ -121,3 +121,12 @@ test("shows what the pipeline loaded per chain", async ({ page }) => {
   await expect(panel.getByRole("row")).toHaveCount(3); // header + two chains
   await expect(panel.getByRole("rowheader").first()).toHaveText("זולה");
 });
+
+test("adds a typed comma-separated list in one go", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("חלב, לחם, קוויאר");
+  const preview = page.getByLabel("רשימה שהוקלדה");
+  await expect(preview.getByRole("listitem")).toHaveCount(3);
+  await expect(preview).toContainText("לא נמצא"); // קוויאר
+  await preview.getByRole("button", { name: "הוספת 2 מוצרים לרשימה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(2);
+});
