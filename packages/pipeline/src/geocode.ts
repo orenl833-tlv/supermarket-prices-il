@@ -123,6 +123,7 @@ const STREET_CITY: Record<string, string> = {
 export function cleanAddress(address: string | null): string | null {
   if (!address) return null;
   let a = address
+    .replace(/\p{Cf}/gu, "") // invisible format characters (RTL marks and the like)
     .replace(/&#x?[0-9a-f]+;/gi, " ") // stray XML character references
     .replace(/[,()]/g, " ")
     .replace(/([א-ת])(\d)/g, "$1 $2") // "אבן גבירול157" -> "אבן גבירול 157"
@@ -132,7 +133,8 @@ export function cleanAddress(address: string | null): string | null {
 
   a = a.replace(/^.*\s-\s(?=(רח'|רחוב)\s)/, ""); // "קניון גינדי - רחוב קרליבך": the street part
   a = a.replace(/^(רח'|רחוב)\s+/, "");
-  a = a.replace(/^שד(?:['`׳.]\s*|\s+)/, "שדרות "); // "שד` רוטשילד", "שד.הארזים" -> "שדרות ..."
+  // "שד` רוטשילד", "שד.הארזים": any punctuation mark after שד (chains use ' ` ׳ . and others)
+  a = a.replace(/^שד(?:[^\s\p{L}\p{N}]\s*|\s+)/u, "שדרות ");
   a = a.replace(/(^|\s)ככר(?=\s)/, "$1כיכר");
   // Keep "street number" and drop what follows: corners, notes, neighbourhoods, the city.
   const m = /^(\d+)(?:-\d+)?\s+(\D+)$/.exec(a); // number first: "1 אחי מאיר", "4-6 גרפית"
@@ -229,7 +231,8 @@ export async function geocodeStores(
       hit = streetHit && { ...streetHit, precision: "street" };
     }
     if (!hit) {
-      failed.push(`${store.name}: no match for "${query}"`);
+      // JSON.stringify shows invisible characters in the log, e.g. "\u200f".
+      failed.push(`${store.name}: no match for ${JSON.stringify(query)}`);
       continue;
     }
     await pool.query(
