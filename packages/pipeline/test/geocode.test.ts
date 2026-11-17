@@ -28,6 +28,7 @@ describe("geocodeQuery", () => {
 
   it("cleans Carrefour's address styles", () => {
     expect(cleanAddress("שד.הארזים 2")).toBe("שדרות הארזים 2");
+    expect(cleanAddress("\u200fשד\u05C3הארזים 2")).toBe("שדרות הארזים 2"); // RTL mark, Hebrew sof pasuq
     expect(cleanAddress("ככר דיזנגוף 9")).toBe("כיכר דיזנגוף 9");
     expect(cleanAddress("4-6 גרפית")).toBe("גרפית 4");
     expect(cleanAddress("קניון גינדי - רחוב קרליבך")).toBe("קרליבך");
