@@ -22,6 +22,9 @@ export function ProductSearch({
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [listMatches, setListMatches] = useState<ListMatch[] | null>(null);
+  /** "best": the server's ranking (most likely meant first); "unit": cheapest per kg, litre or egg. */
+  const [sort, setSort] = useState<"best" | "unit">("best");
+  const shown = sort === "unit" ? byUnitPrice(results) : results;
 
   useEffect(() => {
     const q = query.trim();
@@ -127,9 +130,29 @@ export function ProductSearch({
           </span>
         </button>
       )}
+      {results.length > 1 && (
+        <div className="segmented sort" role="radiogroup" aria-label="מיון תוצאות">
+          {(
+            [
+              ["best", "הכי מתאים"],
+              ["unit", "הכי זול לק\"ג/ליטר"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={sort === value}
+              className={sort === value ? "on" : ""}
+              onClick={() => setSort(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       {results.length > 0 && (
         <ul className="results" aria-label="תוצאות חיפוש">
-          {results.map((p) => (
+          {shown.map((p) => (
             <li key={p.id}>
               <button
                 className="result"
@@ -227,5 +250,12 @@ function ListPreview({
         הוספת {toAdd.length} מוצרים לרשימה
       </button>
     </div>
+  );
+}
+
+/** Cheapest per kg, litre or egg first; products without a unit price last, in their old order. */
+export function byUnitPrice(products: Product[]): Product[] {
+  return [...products].sort(
+    (a, b) => (a.unitPrice?.price ?? Infinity) - (b.unitPrice?.price ?? Infinity),
   );
 }
