@@ -50,8 +50,19 @@ export interface Plan {
       extraUnits?: number;
       /** Units the customer could add to complete a deal (not in the total). */
       suggestion?: { quantity: number; extraCost: number; promotion: string };
+      /** A minimum-purchase deal on this product not reached yet: spend `missing` more in the store. */
+      unlock?: { minPurchase: number; missing: number; promotion: string };
     }>;
     subtotal: number;
+    /** Deals on other products that this stop's total unlocks ("מעל 100"). */
+    unlockedDeals?: Array<{
+      productId: number;
+      name: string;
+      description: string;
+      minPurchase: number;
+      regularPrice: number;
+      dealPrice: number;
+    }>;
   }>;
   missing: Array<{ productId: number; importance: Importance; penalty: number }>;
   itemsCost: number;

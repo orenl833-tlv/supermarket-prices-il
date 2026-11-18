@@ -9,6 +9,7 @@ export function Results({
   origin,
   updatedAt = {},
   onAddUnits,
+  onAddProduct,
 }: {
   result: CompareResult;
   origin: { lat: number; lon: number };
@@ -16,6 +17,8 @@ export function Results({
   updatedAt?: Record<string, string | null>;
   /** Add units of a basket product, to take up a suggested deal. */
   onAddUnits?: (productId: number, units: number) => void;
+  /** Add a product the basket does not have, to take up an unlocked deal. */
+  onAddProduct?: (productId: number) => void;
 }) {
   const name = (id: number) => result.productNames[id] ?? `מוצר ${id}`;
   const [best, ...rest] = result.plans;
@@ -35,7 +38,7 @@ export function Results({
         {result.unavailable.length > 0 && <> אין באזור: {result.unavailable.map(name).join(", ")}.</>}
       </p>
       <ResultsMap origin={origin} plans={result.plans} />
-      <PlanCard plan={best} best name={name} updatedAt={updatedAt} onAddUnits={onAddUnits} />
+      <PlanCard plan={best} best name={name} updatedAt={updatedAt} onAddUnits={onAddUnits} onAddProduct={onAddProduct} />
       {rest.map((plan, i) => (
         <PlanCard
           key={i}
@@ -44,6 +47,7 @@ export function Results({
           diff={plan.score - best.score}
           updatedAt={updatedAt}
           onAddUnits={onAddUnits}
+          onAddProduct={onAddProduct}
         />
       ))}
     </section>
@@ -57,6 +61,7 @@ function PlanCard({
   name,
   updatedAt,
   onAddUnits,
+  onAddProduct,
 }: {
   plan: Plan;
   best?: boolean;
@@ -64,6 +69,7 @@ function PlanCard({
   name: (id: number) => string;
   updatedAt: Record<string, string | null>;
   onAddUnits?: (productId: number, units: number) => void;
+  onAddProduct?: (productId: number) => void;
 }) {
   const [open, setOpen] = useState(best);
   const [copied, setCopied] = useState(false);
@@ -163,6 +169,12 @@ function PlanCard({
                         תוספת מחיר
                       </span>
                     ) : null}
+                    {l.unlock && (
+                      <span className="small promo-unlock">
+                        {" "}
+                        {l.unlock.promotion}: עוד {money(l.unlock.missing)} בקנייה בסניף והמבצע חל
+                      </span>
+                    )}
                     {l.suggestion && onAddUnits && (
                       <button
                         className="link small promo-suggestion"
@@ -178,6 +190,26 @@ function PlanCard({
               ))}
             </ul>
             {plan.stops.length > 1 && <p className="small subtotal">סה"כ בסופר הזה: {money(stop.subtotal)}</p>}
+            {stop.unlockedDeals && stop.unlockedDeals.length > 0 && (
+              <div className="unlocked">
+                <p className="small">הקנייה כאן עוברת את המינימום של מבצעים נוספים:</p>
+                <ul className="lines">
+                  {stop.unlockedDeals.map((d) => (
+                    <li key={d.productId} className="row between">
+                      <span className="small">
+                        {d.name} ב-{money(d.dealPrice)} <s className="muted">{money(d.regularPrice)}</s>
+                        <span className="muted"> ({d.description})</span>
+                      </span>
+                      {onAddProduct && (
+                        <button className="link small" onClick={() => onAddProduct(d.productId)}>
+                          הוספה
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ))}
     </article>

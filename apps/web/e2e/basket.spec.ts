@@ -180,3 +180,18 @@ test("sorts search results by price per unit on request", async ({ page }) => {
   await expect(page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator(".result").first()).toContainText("ביצים L ארוזות"); // 12 for 12 before 12 for 13
 });
+
+test("offers deals the basket unlocks with a minimum purchase, and adds one in a tap", async ({ page }) => {
+  await add(page, "חלב");
+  await add(page, "לחם");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.getByRole("heading")).toHaveText("זולה זולה דיזנגוף");
+  const unlocked = best.locator(".unlocked");
+  await expect(unlocked).toContainText("ביצים L ארוזות");
+  await expect(unlocked).toContainText("ביצים ב-6 מעל 10");
+  await unlocked.getByRole("button", { name: "הוספה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(3);
+  // Compared again: milk 6.50 + bread 7 = 13.50 reaches the minimum, so the eggs cost 6.
+  await expect(page.locator(".plan.best .price strong")).toContainText("19.50");
+});

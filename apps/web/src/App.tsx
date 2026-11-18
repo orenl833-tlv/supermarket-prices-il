@@ -132,6 +132,15 @@ export function App() {
             result={result}
             origin={settings.location}
             updatedAt={Object.fromEntries(freshness.map((f) => [f.chain, f.updatedAt]))}
+            onAddProduct={(productId) => {
+              productsByIds([productId])
+                .then(([product]) => {
+                  if (!product) return;
+                  setRecompare(true);
+                  setBasket((b) => [...b, { product, quantity: 1, importance: "normal", anyBrand: false }]);
+                })
+                .catch(() => setError("לא הצלחנו להוסיף את המוצר."));
+            }}
             onAddUnits={(productId, units) => {
               setRecompare(true);
               setBasket((b) => b.map((e) => (e.product.id === productId ? { ...e, quantity: e.quantity + units } : e)));

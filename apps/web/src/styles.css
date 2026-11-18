@@ -574,3 +574,17 @@ footer {
   margin: 8px 0 0;
   width: fit-content;
 }
+
+.promo-unlock {
+  display: block;
+  color: var(--muted);
+}
+.unlocked {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+}
+.unlocked p {
+  margin: 0 0 4px;
+}
