@@ -157,3 +157,11 @@ test("adds a list typed with spaces", async ({ page }) => {
   await preview.getByRole("button", { name: "הוספת 2 מוצרים לרשימה" }).click();
   await expect(page.locator(".basket-item")).toHaveCount(2);
 });
+
+test("sorts search results by price per unit on request", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("ביצים");
+  await expect(page.locator(".result")).toHaveCount(2);
+  await page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' }).click();
+  await expect(page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".result").first()).toContainText("ביצים L ארוזות"); // 12 for 12 before 12 for 13
+});

@@ -556,3 +556,8 @@ footer {
 .list-term {
   font-weight: 700;
 }
+
+.segmented.sort {
+  margin: 8px 0 0;
+  width: fit-content;
+}
