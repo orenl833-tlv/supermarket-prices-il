@@ -164,3 +164,19 @@ test("suggests completing a 2+1 deal, and takes it up in one tap", async ({ page
   await expect(page.locator(".plan.best")).toContainText("מבצע");
   await expect(page.locator(".plan.best")).toContainText("× 3");
 });
+
+test("adds a list typed with spaces", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("חלב לחם");
+  const preview = page.getByLabel("רשימה שהוקלדה");
+  await expect(preview.getByRole("listitem")).toHaveCount(2);
+  await preview.getByRole("button", { name: "הוספת 2 מוצרים לרשימה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(2);
+});
+
+test("sorts search results by price per unit on request", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("ביצים");
+  await expect(page.locator(".result")).toHaveCount(2);
+  await page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' }).click();
+  await expect(page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' })).toHaveAttribute("aria-checked", "true");
+  await expect(page.locator(".result").first()).toContainText("ביצים L ארוזות"); // 12 for 12 before 12 for 13
+});

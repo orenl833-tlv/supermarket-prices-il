@@ -9,6 +9,7 @@ import {
   type Substitute,
 } from "@spil/engine";
 import type pg from "pg";
+import { queryKeys, rankHits } from "./search.js";
 
 export interface ProductHit {
   id: number;
@@ -54,22 +55,76 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
   const q = query.trim();
   if (q === "") return [];
 
-  const isBarcode = /^\d{6,14}$/.test(q);
-  // Chains and users write קוטג' / קוטג׳ / קוטג and ש"ח / ש״ח interchangeably,
-  // so quote marks are removed from both sides before matching.
-  const plain = stripQuotes(q);
-  const words = plain.split(/\s+/).filter(Boolean).map((w) => `%${escapeLike(w)}%`);
-  if (!isBarcode && words.length === 0) return [];
-  const name = `translate(p.name, '${QUOTES.replace("'", "''")}', '')`;
+  if (/^\d{6,14}$/.test(q)) {
+    const { rows } = await db.query(`${HIT_COLUMNS} WHERE p.barcode = $1 GROUP BY p.id, cat.name`, [q]);
+    return rows.map(toHit);
+  }
+
+  // Spelling-tolerant match on search keys (see search.ts), then rank in code:
+  // the database narrows to the most widely sold candidates, rankHits orders them.
+  const keys = queryKeys(q);
+  if (keys.length === 0) return [];
   const { rows } = await db.query(
     `${HIT_COLUMNS}
-     WHERE ${isBarcode ? "p.barcode = $1" : `${name} ILIKE ALL ($1::text[])`}
+     WHERE p.search_key LIKE ALL ($1::text[])
      GROUP BY p.id, cat.name
-     ORDER BY ${name} ILIKE $3 DESC, count(DISTINCT c.id) DESC, store_count DESC, length(p.name), p.name
-     LIMIT $2`,
-    [isBarcode ? q : words, limit, `${escapeLike(plain.split(/\s+/)[0] ?? "")}%`],
+     ORDER BY count(DISTINCT c.id) DESC, store_count DESC
+     LIMIT ${SEARCH_CANDIDATES}`,
+    [keys.map((k) => `%${escapeLike(k)}%`)],
   );
-  return rows.map(toHit);
+  return rankHits(q, rows.map(toHit)).slice(0, limit);
+}
+
+/** How many matches the database hands to the ranking. */
+const SEARCH_CANDIDATES = 1000;
+
+/**
+ * Split a list typed with spaces ("חלב 3% במבה מתוקה לחם") into items.
+ *
+ * Product names have several words too ("במבה מתוקה", "אפונה יבשה"), so we
+ * cannot split on every space. Greedy longest match: from each position, take
+ * the longest run of up to MAX_PHRASE_WORDS words that some product's name
+ * contains (all words, in any order), then continue after it. A word nothing
+ * matches stays an item of its own, so the user sees it was not found.
+ *
+ * Only called when the whole text matched nothing as one search, so "חלב 3%"
+ * is still a single search. Returns null unless it finds at least two items.
+ */
+export const MAX_PHRASE_WORDS = 3;
+
+export async function segmentList(db: pg.Pool, query: string): Promise<string[] | null> {
+  const words = stripQuotes(query).split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 30) return null;
+
+  const items: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    let taken = 1;
+    for (let len = Math.min(MAX_PHRASE_WORDS, words.length - i); len >= 1; len--) {
+      if (await anyProductNamed(db, words.slice(i, i + len))) {
+        taken = len;
+        break;
+      }
+    }
+    items.push(words.slice(i, i + taken).join(" "));
+    i += taken;
+  }
+  return items.length >= 2 ? items : null;
+}
+
+/** Is some product with a current price named with all these words (spelling-tolerant)? */
+async function anyProductNamed(db: pg.Pool, words: string[]): Promise<boolean> {
+  const keys = queryKeys(words.join(" "));
+  if (keys.length === 0) return false;
+  const { rows } = await db.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM products p
+       WHERE p.search_key LIKE ALL ($1::text[])
+         AND EXISTS (SELECT 1 FROM price_changes pc WHERE pc.product_id = p.id AND pc.valid_to IS NULL)
+     ) AS found`,
+    [keys.map((k) => `%${escapeLike(k)}%`)],
+  );
+  return rows[0].found;
 }
 
 /** Products by id, in the order asked (unknown or no longer sold ids are left out). */

@@ -13,6 +13,7 @@ import {
   productsByIds,
   searchProducts,
   unlockableDeals,
+  segmentList,
   storesNear,
 } from "./queries.js";
 
@@ -109,7 +110,7 @@ export function buildServer(
         querystring: {
           type: "object",
           required: ["q"],
-          properties: { q: { type: "string", minLength: 1, maxLength: 60 } },
+          properties: { q: { type: "string", minLength: 1, maxLength: 200 } },
         },
       },
     },
@@ -118,7 +119,9 @@ export function buildServer(
         searchProducts(db, req.query.q),
         categorySuggestion(db, req.query.q),
       ]);
-      return { products, suggestion };
+      // Nothing matches the whole text: it may be a list typed with spaces.
+      const items = products.length === 0 && !suggestion ? await segmentList(db, req.query.q) : null;
+      return { products, suggestion, items };
     },
   );
 

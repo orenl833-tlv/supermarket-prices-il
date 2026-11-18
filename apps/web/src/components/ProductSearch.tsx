@@ -3,6 +3,11 @@ import { searchProducts, type Product, type SearchResult } from "../api";
 import { money, size, unitPrice } from "../format";
 import { chosenOption, matchOptions, splitList, type ListMatch, type ListOption } from "../listInput";
 
+/** One search per item of a typed list, each turned into a menu of choices. */
+function loadList(items: string[], signal: AbortSignal): Promise<ListMatch[]> {
+  return Promise.all(items.map((term) => searchProducts(term, signal).then((r) => matchOptions(term, r))));
+}
+
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
 export function ProductSearch({
   onAdd,
@@ -17,6 +22,9 @@ export function ProductSearch({
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [listMatches, setListMatches] = useState<ListMatch[] | null>(null);
+  /** "best": the server's ranking (most likely meant first); "unit": cheapest per kg, litre or egg. */
+  const [sort, setSort] = useState<"best" | "unit">("best");
+  const shown = sort === "unit" ? byUnitPrice(results) : results;
 
   useEffect(() => {
     const q = query.trim();
@@ -30,7 +38,7 @@ export function ProductSearch({
       const timer = setTimeout(() => {
         setLoading(true);
         setFailed(false);
-        Promise.all(items.map((term) => searchProducts(term, controller.signal).then((r) => matchOptions(term, r))))
+        loadList(items, controller.signal)
           .then(setListMatches)
           .catch((err: unknown) => {
             if (!(err instanceof DOMException && err.name === "AbortError")) setFailed(true);
@@ -52,9 +60,14 @@ export function ProductSearch({
       setLoading(true);
       setFailed(false);
       searchProducts(q, controller.signal)
-        .then((r) => {
+        .then(async (r) => {
           setResults(r.products);
           setSuggestion(r.suggestion);
+          // Nothing matched the whole text, but the server split it into items:
+          // "חלב 3% במבה מתוקה לחם" is a list typed with spaces.
+          if (r.products.length === 0 && r.items && r.items.length >= 2) {
+            setListMatches(await loadList(r.items, controller.signal));
+          }
         })
         .catch((err: unknown) => {
           // An aborted request was replaced by a newer one; anything else is a real failure.
@@ -81,7 +94,7 @@ export function ProductSearch({
         id="search"
         className="input"
         type="search"
-        placeholder="מוצר אחד, או רשימה עם פסיקים: חלב, לחם, ביצים"
+        placeholder="מוצר, או כמה: חלב 3% לחם אחיד ביצים"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         autoComplete="off"
@@ -117,9 +130,29 @@ export function ProductSearch({
           </span>
         </button>
       )}
+      {results.length > 1 && (
+        <div className="segmented sort" role="radiogroup" aria-label="מיון תוצאות">
+          {(
+            [
+              ["best", "הכי מתאים"],
+              ["unit", "הכי זול לק\"ג/ליטר"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              role="radio"
+              aria-checked={sort === value}
+              className={sort === value ? "on" : ""}
+              onClick={() => setSort(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
       {results.length > 0 && (
         <ul className="results" aria-label="תוצאות חיפוש">
-          {results.map((p) => (
+          {shown.map((p) => (
             <li key={p.id}>
               <button
                 className="result"
@@ -217,5 +250,12 @@ function ListPreview({
         הוספת {toAdd.length} מוצרים לרשימה
       </button>
     </div>
+  );
+}
+
+/** Cheapest per kg, litre or egg first; products without a unit price last, in their old order. */
+export function byUnitPrice(products: Product[]): Product[] {
+  return [...products].sort(
+    (a, b) => (a.unitPrice?.price ?? Infinity) - (b.unitPrice?.price ?? Infinity),
   );
 }

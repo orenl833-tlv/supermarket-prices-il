@@ -5,6 +5,7 @@ import { migrate } from "@spil/pipeline/src/db/migrate.js";
 import { classifyProducts } from "@spil/pipeline/src/classify.js";
 import type { PriceItem } from "@spil/pipeline/src/types.js";
 import { buildServer } from "../src/server.js";
+import { searchKey } from "../src/search.js";
 
 const url = process.env.TEST_DATABASE_URL;
 
@@ -245,6 +246,25 @@ describe.skipIf(!url)("API", () => {
       payload: { lat: 0, lon: 0, items: [] },
     });
     expect(res.statusCode).toBe(400);
+  });
+
+  it("builds search keys in the database exactly as the code does", async () => {
+    const words = ["לאבנה", "לימונים", "קוטג'", "עגבנייה", "Coca", "ש\u05F4ח", "במבה"];
+    const { rows } = await pool.query("SELECT hebrew_search_key(w) AS key FROM unnest($1::text[]) w", [words]);
+    expect(rows.map((r) => r.key)).toEqual(words.map(searchKey));
+  });
+
+  it("finds a product written without the vowel letter (לבנה finds לאבנה)", async () => {
+    expect((await search("חאלב שומן")).map((p: { name: string }) => p.name)).toEqual(["חלב 3% שומן 1 ליטר"]);
+  });
+
+  it("splits a list typed with spaces, keeping multi-word names together", async () => {
+    const items = async (q: string) =>
+      (await app.inject({ url: `/api/products?q=${encodeURIComponent(q)}` })).json().items;
+    expect(await items("חלב 3% לחם אחיד")).toEqual(["חלב 3%", "לחם אחיד"]);
+    expect(await items("משקה שיבולת שועל לחם")).toEqual(["משקה שיבולת שועל", "לחם"]);
+    expect(await items("חלב לחם קוויאר")).toEqual(["חלב", "לחם", "קוויאר"]); // קוויאר: not found, shown as such
+    expect(await items("חלב 3%")).toBeNull(); // one product: an ordinary search
   });
 
   it("ignores quote marks: geresh, gershayim and their ASCII look-alikes", async () => {

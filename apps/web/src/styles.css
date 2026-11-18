@@ -570,4 +570,7 @@ footer {
   display: block;
   padding: 2px 0;
   text-align: start;
+.segmented.sort {
+  margin: 8px 0 0;
+  width: fit-content;
 }
