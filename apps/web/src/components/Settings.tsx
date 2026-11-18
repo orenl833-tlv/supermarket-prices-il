@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { geocodeAddress, reverseGeocode } from "../api";
+import { distance } from "../format";
 export interface Location {
   label: string;
   lat: number;
@@ -145,16 +146,16 @@ export function Settings({
       )}
 
       <label className="label" htmlFor="radius">
-        מרחק בקו אווירי: עד {value.radiusKm} ק"מ
+        מרחק בקו אווירי: עד {distance(value.radiusKm)}
       </label>
       <input
         id="radius"
         type="range"
-        min={0.5}
+        min={0.2}
         max={3}
-        step={0.5}
+        step={0.1}
         value={value.radiusKm}
-        onChange={(e) => set({ radiusKm: Number(e.target.value) })}
+        onChange={(e) => set({ radiusKm: Math.round(Number(e.target.value) * 10) / 10 })}
       />
 
       <label className="check">
@@ -175,7 +176,7 @@ export function Settings({
             type="range"
             min={0}
             max={50}
-            step={5}
+            step={1}
             value={value.extraStopCost}
             onChange={(e) => set({ extraStopCost: Number(e.target.value) })}
           />
