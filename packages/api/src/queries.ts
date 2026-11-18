@@ -64,6 +64,53 @@ export async function searchProducts(db: pg.Pool, query: string, limit = 20): Pr
   return rows.map(toHit);
 }
 
+/**
+ * Split a list typed with spaces ("חלב 3% במבה מתוקה לחם") into items.
+ *
+ * Product names have several words too ("במבה מתוקה", "אפונה יבשה"), so we
+ * cannot split on every space. Greedy longest match: from each position, take
+ * the longest run of up to MAX_PHRASE_WORDS words that some product's name
+ * contains (all words, in any order), then continue after it. A word nothing
+ * matches stays an item of its own, so the user sees it was not found.
+ *
+ * Only called when the whole text matched nothing as one search, so "חלב 3%"
+ * is still a single search. Returns null unless it finds at least two items.
+ */
+export const MAX_PHRASE_WORDS = 3;
+
+export async function segmentList(db: pg.Pool, query: string): Promise<string[] | null> {
+  const words = stripQuotes(query).split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 30) return null;
+
+  const items: string[] = [];
+  let i = 0;
+  while (i < words.length) {
+    let taken = 1;
+    for (let len = Math.min(MAX_PHRASE_WORDS, words.length - i); len >= 1; len--) {
+      if (await anyProductNamed(db, words.slice(i, i + len))) {
+        taken = len;
+        break;
+      }
+    }
+    items.push(words.slice(i, i + taken).join(" "));
+    i += taken;
+  }
+  return items.length >= 2 ? items : null;
+}
+
+/** Is some product with a current price named with all these words? */
+async function anyProductNamed(db: pg.Pool, words: string[]): Promise<boolean> {
+  const { rows } = await db.query(
+    `SELECT EXISTS (
+       SELECT 1 FROM products p
+       WHERE translate(p.name, '${QUOTES.replace("'", "''")}', '') ILIKE ALL ($1::text[])
+         AND EXISTS (SELECT 1 FROM price_changes pc WHERE pc.product_id = p.id AND pc.valid_to IS NULL)
+     ) AS found`,
+    [words.map((w) => `%${escapeLike(w)}%`)],
+  );
+  return rows[0].found;
+}
+
 /** Products by id, in the order asked (unknown or no longer sold ids are left out). */
 export async function productsByIds(db: pg.Pool, ids: number[]): Promise<ProductHit[]> {
   if (ids.length === 0) return [];

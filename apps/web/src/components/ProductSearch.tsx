@@ -3,6 +3,11 @@ import { searchProducts, type Product, type SearchResult } from "../api";
 import { money, size, unitPrice } from "../format";
 import { chosenOption, matchOptions, splitList, type ListMatch, type ListOption } from "../listInput";
 
+/** One search per item of a typed list, each turned into a menu of choices. */
+function loadList(items: string[], signal: AbortSignal): Promise<ListMatch[]> {
+  return Promise.all(items.map((term) => searchProducts(term, signal).then((r) => matchOptions(term, r))));
+}
+
 /** Search box with results that update as you type (debounced, stale requests cancelled). */
 export function ProductSearch({
   onAdd,
@@ -30,7 +35,7 @@ export function ProductSearch({
       const timer = setTimeout(() => {
         setLoading(true);
         setFailed(false);
-        Promise.all(items.map((term) => searchProducts(term, controller.signal).then((r) => matchOptions(term, r))))
+        loadList(items, controller.signal)
           .then(setListMatches)
           .catch((err: unknown) => {
             if (!(err instanceof DOMException && err.name === "AbortError")) setFailed(true);
@@ -52,9 +57,14 @@ export function ProductSearch({
       setLoading(true);
       setFailed(false);
       searchProducts(q, controller.signal)
-        .then((r) => {
+        .then(async (r) => {
           setResults(r.products);
           setSuggestion(r.suggestion);
+          // Nothing matched the whole text, but the server split it into items:
+          // "חלב 3% במבה מתוקה לחם" is a list typed with spaces.
+          if (r.products.length === 0 && r.items && r.items.length >= 2) {
+            setListMatches(await loadList(r.items, controller.signal));
+          }
         })
         .catch((err: unknown) => {
           // An aborted request was replaced by a newer one; anything else is a real failure.
@@ -81,7 +91,7 @@ export function ProductSearch({
         id="search"
         className="input"
         type="search"
-        placeholder="מוצר אחד, או רשימה עם פסיקים: חלב, לחם, ביצים"
+        placeholder="מוצר, או כמה: חלב 3% לחם אחיד ביצים"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         autoComplete="off"

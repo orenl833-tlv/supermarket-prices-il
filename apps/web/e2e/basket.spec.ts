@@ -149,3 +149,11 @@ test("shows the address that 'my location' resolved to", async ({ page, context 
   await expect(page.getByText("זוהתה הכתובת דיזנגוף 50, לב העיר · דיוק של כ-25 מ'")).toBeVisible();
   await expect(page.getByLabel("מאיפה יוצאים")).toContainText("המיקום שלי: דיזנגוף 50, לב העיר");
 });
+
+test("adds a list typed with spaces", async ({ page }) => {
+  await page.getByLabel("מה צריך לקנות?").fill("חלב לחם");
+  const preview = page.getByLabel("רשימה שהוקלדה");
+  await expect(preview.getByRole("listitem")).toHaveCount(2);
+  await preview.getByRole("button", { name: "הוספת 2 מוצרים לרשימה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(2);
+});
