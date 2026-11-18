@@ -75,13 +75,15 @@ export interface SearchResult {
   products: Product[];
   /** When the query names a category ("ביצים"): a product to add as "any brand". */
   suggestion: { category: string; product: Product } | null;
+  /** When nothing matches the whole text: the items of a list typed with spaces. */
+  items?: string[] | null;
 }
 
 export async function searchProducts(q: string, signal?: AbortSignal): Promise<SearchResult> {
   const res = await fetch(`/api/products?q=${encodeURIComponent(q)}`, { signal });
   if (!res.ok) throw new Error(`search failed: ${res.status}`);
   const body = await res.json();
-  return { products: body.products, suggestion: body.suggestion ?? null };
+  return { products: body.products, suggestion: body.suggestion ?? null, items: body.items ?? null };
 }
 
 export async function productsByIds(ids: number[]): Promise<Product[]> {
