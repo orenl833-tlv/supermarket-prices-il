@@ -1,5 +1,13 @@
 import { bestSubstitute, categoryByKey, classify, type PricedProduct, type ProductInfo } from "@spil/catalog";
-import { distanceKm, type BasketItem, type PriceTable, type Store, type Substitute } from "@spil/engine";
+import {
+  distanceKm,
+  type BasketItem,
+  type PriceTable,
+  type Promotion,
+  type PromotionTable,
+  type Store,
+  type Substitute,
+} from "@spil/engine";
 import type pg from "pg";
 
 export interface ProductHit {
@@ -217,6 +225,61 @@ export async function currentPrices(
     table.get(r.store_id)!.set(r.product_id, r.price);
   }
   return table;
+}
+
+/**
+ * Promotions running now for the basket's products in the candidate stores,
+ * in the engine's shape. Rows are stored by the pipeline from PromoFull files.
+ */
+export async function activePromotions(
+  db: pg.Pool,
+  storeIds: number[],
+  productIds: number[],
+  now = new Date(),
+): Promise<PromotionTable> {
+  const { rows } = await db.query<{
+    store_id: number;
+    product_id: number;
+    description: string;
+    kind: Promotion["kind"];
+    quantity: number | null;
+    get_quantity: number | null;
+    price: number | null;
+    discount: number | null;
+  }>(
+    `SELECT store_id, product_id, description, kind, quantity, get_quantity,
+            price::float AS price, discount::float AS discount
+     FROM store_promotions
+     WHERE store_id = ANY($1::int[]) AND product_id = ANY($2::int[])
+       AND starts_at <= $3 AND ends_at > $3`,
+    [storeIds, productIds, now],
+  );
+  const table = new Map<number, Map<number, Promotion[]>>();
+  for (const r of rows) {
+    const promotion = toPromotion(r);
+    if (!promotion) continue;
+    if (!table.has(r.store_id)) table.set(r.store_id, new Map());
+    const byProduct = table.get(r.store_id)!;
+    byProduct.set(r.product_id, [...(byProduct.get(r.product_id) ?? []), promotion]);
+  }
+  return table;
+}
+
+function toPromotion(r: {
+  description: string;
+  kind: Promotion["kind"];
+  quantity: number | null;
+  get_quantity: number | null;
+  price: number | null;
+  discount: number | null;
+}): Promotion | null {
+  const { description } = r;
+  if (r.kind === "unitPrice" && r.price) return { kind: "unitPrice", price: r.price, description };
+  if (r.kind === "bundle" && r.quantity && r.price) return { kind: "bundle", quantity: r.quantity, price: r.price, description };
+  if (r.kind === "buyGet" && r.quantity && r.get_quantity && r.discount) {
+    return { kind: "buyGet", buy: r.quantity, get: r.get_quantity, discount: r.discount, description };
+  }
+  return null;
 }
 
 /**

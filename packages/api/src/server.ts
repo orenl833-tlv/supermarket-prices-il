@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
 import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
+  activePromotions,
   categorySuggestion,
   currentPrices,
   findSubstitutes,
@@ -173,7 +174,10 @@ export function buildServer(
       const stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
       const productIds = items.map((i) => i.productId);
       const prices = await currentPrices(db, stores.map((s) => s.id), productIds);
-      const substitutes = await findSubstitutes(db, items, stores.map((s) => s.id), prices);
+      const [substitutes, promotions] = await Promise.all([
+        findSubstitutes(db, items, stores.map((s) => s.id), prices),
+        activePromotions(db, stores.map((s) => s.id), productIds),
+      ]);
 
       const plans = optimize({
         basket: items,
@@ -185,6 +189,7 @@ export function buildServer(
         missingTripCost: extraStopCost,
         onePerChain: true,
         substitutes,
+        promotions,
       });
 
       // Items no nearby store sells, not even as a substitute: shown separately,

@@ -8,11 +8,14 @@ export function Results({
   result,
   origin,
   updatedAt = {},
+  onAddUnits,
 }: {
   result: CompareResult;
   origin: { lat: number; lon: number };
   /** chain name -> when its prices were last updated */
   updatedAt?: Record<string, string | null>;
+  /** Add units of a basket product, to take up a suggested deal. */
+  onAddUnits?: (productId: number, units: number) => void;
 }) {
   const name = (id: number) => result.productNames[id] ?? `מוצר ${id}`;
   const [best, ...rest] = result.plans;
@@ -32,9 +35,16 @@ export function Results({
         {result.unavailable.length > 0 && <> אין באזור: {result.unavailable.map(name).join(", ")}.</>}
       </p>
       <ResultsMap origin={origin} plans={result.plans} />
-      <PlanCard plan={best} best name={name} updatedAt={updatedAt} />
+      <PlanCard plan={best} best name={name} updatedAt={updatedAt} onAddUnits={onAddUnits} />
       {rest.map((plan, i) => (
-        <PlanCard key={i} plan={plan} name={name} diff={plan.score - best.score} updatedAt={updatedAt} />
+        <PlanCard
+          key={i}
+          plan={plan}
+          name={name}
+          diff={plan.score - best.score}
+          updatedAt={updatedAt}
+          onAddUnits={onAddUnits}
+        />
       ))}
     </section>
   );
@@ -46,12 +56,14 @@ function PlanCard({
   diff = 0,
   name,
   updatedAt,
+  onAddUnits,
 }: {
   plan: Plan;
   best?: boolean;
   diff?: number;
   name: (id: number) => string;
   updatedAt: Record<string, string | null>;
+  onAddUnits?: (productId: number, units: number) => void;
 }) {
   const [open, setOpen] = useState(best);
   const [copied, setCopied] = useState(false);
@@ -137,10 +149,28 @@ function PlanCard({
                 <li key={l.productId} className="row between">
                   <span>
                     {l.substituteFor !== undefined && <span className="tag">תחליף</span>}
+                    {l.promotion && <span className="tag promo">מבצע</span>}
                     {name(l.productId)}
                     {l.quantity !== 1 && <span className="muted"> × {l.quantity}</span>}
                     {l.substituteFor !== undefined && (
                       <span className="muted small"> (במקום {name(l.substituteFor)})</span>
+                    )}
+                    {l.promotion && <span className="muted small promo-text"> {l.promotion}</span>}
+                    {l.extraUnits ? (
+                      <span className="small promo-extra">
+                        {" "}
+                        {l.extraUnits === 1 ? "כולל יחידה נוספת" : `כולל ${l.extraUnits} יחידות נוספות`} בלי
+                        תוספת מחיר
+                      </span>
+                    ) : null}
+                    {l.suggestion && onAddUnits && (
+                      <button
+                        className="link small promo-suggestion"
+                        onClick={() => onAddUnits(l.productId, l.suggestion!.quantity)}
+                      >
+                        {l.suggestion.quantity === 1 ? "עוד אחת" : `עוד ${l.suggestion.quantity}`} ב-
+                        {money(l.suggestion.extraCost)} ({l.suggestion.promotion})
+                      </button>
                     )}
                   </span>
                   <span>{money(l.lineTotal)}</span>

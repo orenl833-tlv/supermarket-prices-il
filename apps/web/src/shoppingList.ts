@@ -12,7 +12,8 @@ export function planText(plan: Plan, name: (productId: number) => string): strin
     const lines = stop.lines.map((l) => {
       const qty = l.quantity !== 1 ? ` ×${l.quantity}` : "";
       const instead = l.substituteFor !== undefined ? ` (במקום ${name(l.substituteFor)})` : "";
-      return `- ${name(l.productId)}${qty}${instead}: ${money(l.lineTotal)}`;
+      const promo = l.promotion ? ` [מבצע: ${l.promotion}]` : "";
+      return `- ${name(l.productId)}${qty}${instead}${promo}: ${money(l.lineTotal)}`;
     });
     return [header, ...lines].join("\n");
   });

@@ -8,7 +8,7 @@ import { newest, type ChainSource } from "./types.js";
  * hour, so a file must be downloaded soon after it is listed.
  */
 const BASE = "https://prices.shufersal.co.il/FileObject/UpdateCategory";
-const CATEGORY = { priceFull: 2, stores: 5 } as const;
+const CATEGORY = { priceFull: 2, promoFull: 4, stores: 5 } as const;
 
 export const shufersal: ChainSource = {
   code: "7290027600007",
@@ -23,6 +23,11 @@ export const shufersal: ChainSource = {
   async latestPriceFullFile(storeCode) {
     const files = await listFiles(CATEGORY.priceFull, storeCode);
     return newest(files.filter((f) => f.name.startsWith("PriceFull")));
+  },
+
+  async latestPromoFullFile(storeCode) {
+    const files = await listFiles(CATEGORY.promoFull, storeCode);
+    return newest(files.filter((f) => f.name.startsWith("PromoFull")));
   },
 
   download(file) {

@@ -44,6 +44,12 @@ export interface Plan {
       lineTotal: number;
       /** Set when the line is a close substitute for this basket product. */
       substituteFor?: number;
+      /** The promotion that priced the line, as the chain wrote it ("2+1"). */
+      promotion?: string;
+      /** Units added because they were free or made the line cheaper. */
+      extraUnits?: number;
+      /** Units the customer could add to complete a deal (not in the total). */
+      suggestion?: { quantity: number; extraCost: number; promotion: string };
     }>;
     subtotal: number;
   }>;

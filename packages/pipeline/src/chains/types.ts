@@ -14,6 +14,8 @@ export interface ChainSource {
   latestStoresFile(): Promise<RemoteFile>;
   /** The newest full price file of one branch, or null if none is published. */
   latestPriceFullFile(storeCode: string): Promise<RemoteFile | null>;
+  /** The newest full promotion file of one branch, or null if none is published. */
+  latestPromoFullFile(storeCode: string): Promise<RemoteFile | null>;
   download(file: RemoteFile): Promise<Uint8Array>;
 }
 

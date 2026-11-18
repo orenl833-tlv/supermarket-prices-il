@@ -1,6 +1,7 @@
 import pg from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { applyPrices, upsertChain, upsertProducts, upsertStores } from "../src/db/load.js";
+import { applyPrices, replacePromotions, upsertChain, upsertProducts, upsertStores } from "../src/db/load.js";
+import type { PromoRow } from "../src/promotions.js";
 import { migrate } from "../src/db/migrate.js";
 import type { PriceItem } from "../src/types.js";
 
@@ -25,7 +26,7 @@ describe.skipIf(!url)("database loading", () => {
 
   beforeEach(async () => {
     await pool.query(
-      "TRUNCATE price_changes, chain_products, products, ingest_runs, stores, chains RESTART IDENTITY CASCADE",
+      "TRUNCATE store_promotions, promo_runs, price_changes, chain_products, products, ingest_runs, stores, chains RESTART IDENTITY CASCADE",
     );
     chainId = await upsertChain(pool, "7290027600007", "שופרסל");
     const ids = await upsertStores(pool, chainId, [
@@ -95,4 +96,29 @@ describe.skipIf(!url)("database loading", () => {
     // ...and stable across runs.
     expect((await upsertProducts(pool, chainId, [tomato])).get("123")).toBe(c.get("123"));
   });
+
+  it("replaces a branch's promotions, keeping only products the chain lists", async () => {
+    await upsertProducts(pool, chainId, [
+      { itemCode: "7290000000011", isBarcode: true, name: "חלב", manufacturer: null, quantity: null, unit: null, isWeighted: false, price: 7 },
+    ]);
+    const row = (itemCode: string, promotionId: string): PromoRow => ({
+      itemCode,
+      promotionId,
+      description: "2ב12",
+      kind: "bundle",
+      quantity: 2,
+      getQuantity: null,
+      price: 12,
+      discount: null,
+      startsAt: day(1),
+      endsAt: day(30),
+    });
+
+    // The second item code is unknown to this chain: dropped.
+    expect(await replacePromotions(pool, chainId, storeId, [row("7290000000011", "A"), row("999", "A")])).toBe(1);
+    expect(await replacePromotions(pool, chainId, storeId, [row("7290000000011", "B")])).toBe(1);
+    const { rows } = await pool.query("SELECT promotion_id FROM store_promotions WHERE store_id = $1", [storeId]);
+    expect(rows).toEqual([{ promotion_id: "B" }]); // A was replaced, not kept
+  });
 });
+

@@ -149,3 +149,18 @@ test("shows the address that 'my location' resolved to", async ({ page, context 
   await expect(page.getByText("זוהתה הכתובת דיזנגוף 50, לב העיר · דיוק של כ-25 מ'")).toBeVisible();
   await expect(page.getByLabel("מאיפה יוצאים")).toContainText("המיקום שלי: דיזנגוף 50, לב העיר");
 });
+
+test("suggests completing a 2+1 deal, and takes it up in one tap", async ({ page }) => {
+  await add(page, "לחם");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.getByRole("heading")).toHaveText("זולה זולה דיזנגוף");
+  // One loaf asked: 2+1 is only suggested; two more loaves cost 7.
+  const suggestion = best.getByRole("button", { name: /עוד 2 ב-.*7.*2\+1 לחם אחיד/ });
+  await expect(suggestion).toBeVisible();
+  await suggestion.click();
+  // The basket now has 3 loaves, the comparison runs again, and 3 cost 14.
+  await expect(page.locator(".plan.best .price strong")).toContainText("14.00");
+  await expect(page.locator(".plan.best")).toContainText("מבצע");
+  await expect(page.locator(".plan.best")).toContainText("× 3");
+});

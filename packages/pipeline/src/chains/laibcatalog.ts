@@ -50,6 +50,14 @@ export function laibCatalogChain(opts: {
       );
     },
 
+    async latestPromoFullFile(storeCode) {
+      return newest(
+        (await entries())
+          .filter((e) => e.fileName!.startsWith("PromoFull") && String(e.branchNumber) === storeCode)
+          .map(toFile),
+      );
+    },
+
     download(file) {
       return fetchBytes(file.url);
     },
