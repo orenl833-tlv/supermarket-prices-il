@@ -10,8 +10,12 @@ import { stripZeros } from "./filename.js";
  *   one group,  RewardType 1/10,  MinQty N, DiscountedPrice X  -> bundle: N for X
  *   two groups, group 1 RewardType 0 MinQty N (what you buy),
  *               group 2 MinQty M DiscountRate R (what you get) -> buyGet N+M, R% off
+ * Deals that need a minimum purchase in the store ("מעל 75") keep it in
+ * minPurchase; the engine applies them only when the rest of the basket in
+ * that store reaches it. A per-customer limit ("עד 3 יח'", MaxQty) is kept
+ * for unit-price deals.
  * Left out on purpose: coupons, club-only deals, deals with hours or days,
- * minimum-purchase deals, weighted items, and deals across different products.
+ * weighted items, and deals across different products.
  */
 export interface PromoRow {
   itemCode: string;
@@ -22,6 +26,10 @@ export interface PromoRow {
   getQuantity: number | null;
   price: number | null;
   discount: number | null;
+  /** Spend at least this much on other products in the store (shekels). */
+  minPurchase: number | null;
+  /** At most this many units at the promotion price (unit-price deals). */
+  maxUnits: number | null;
   startsAt: Date;
   endsAt: Date;
 }
@@ -50,6 +58,8 @@ interface RawItem {
   minQty: number;
   discountRate: number | null;
   discountedPrice: number | null;
+  /** Per-customer limit, when the chain sets one. */
+  maxQty: number | null;
   weighted: boolean;
 }
 
@@ -85,29 +95,57 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   if (text(p.additionaliscoupon) === "1" || /קופ/.test(description)) return "coupon";
   if (!(text(p.clubid) ?? "0").startsWith("0")) return "club";
   if (text(p.promotionstarthour) || text(p.promotionendhour) || text(p.promotiondays)) return "limited hours";
-  if (/מעל\s*\d/.test(description)) return "minimum purchase";
 
   const groupNodes: Node[] = [];
   collect(p, "group", groupNodes);
-  if (groupNodes.some((g) => (num(text(g.minpurchaseamount)) ?? 0) > 0)) return "minimum purchase";
-  const groups = groupNodes.map((g) => {
-    const items: Node[] = [];
-    collect(g, "promotionitem", items);
-    return items.map(toRawItem).filter((i): i is RawItem => i !== null);
-  });
+  // The minimum is in MinPurchaseAmount; a few deals only say it in words ("מעל 99").
+  const minFromGroups = Math.max(0, ...groupNodes.map((g) => num(text(g.minpurchaseamount)) ?? 0));
+  const minFromText = Number(/מעל\s*(\d+)/.exec(description)?.[1] ?? 0);
+  const minPurchase = minFromGroups || minFromText || null;
+  // A group whose only item is the code 0000000000000 stands for "anything in
+  // the store": it carries the minimum purchase, not a product, so drop it.
+  const groups = groupNodes
+    .map((g) => {
+      const items: Node[] = [];
+      collect(g, "promotionitem", items);
+      return items.map(toRawItem).filter((i): i is RawItem => i !== null && !/^0+$/.test(i.itemCode));
+    })
+    .filter((g) => g.length > 0);
   if (groups.some((g) => g.some((i) => i.weighted || !Number.isInteger(i.minQty) || i.minQty < 1))) {
     return "weighted";
   }
+  // RedemptionLimit: how many times one customer may use the deal.
+  const redemptions = num(text(p.redemptionlimit));
+  const limit = redemptions && redemptions > 0 ? redemptions : null;
 
-  const base = { promotionId, description, startsAt, endsAt };
+  const base = { promotionId, description, startsAt, endsAt, minPurchase };
   const rows: PromoRow[] = [];
   if (groups.length === 1) {
     for (const i of groups[0]!) {
       const price = i.discountedPrice ?? 0;
-      if (i.rewardType === 3 && i.minQty === 1 && price > 0) {
-        rows.push({ ...base, itemCode: i.itemCode, kind: "unitPrice", quantity: null, getQuantity: null, price, discount: null });
+      const isUnitPrice = (i.rewardType === 3 || i.rewardType === 2) && i.minQty === 1 && price > 0;
+      if (isUnitPrice) {
+        rows.push({
+          ...base,
+          itemCode: i.itemCode,
+          kind: "unitPrice",
+          quantity: null,
+          getQuantity: null,
+          price,
+          discount: null,
+          maxUnits: i.maxQty ?? limit,
+        });
       } else if ((i.rewardType === 1 || i.rewardType === 10) && i.minQty >= 2 && price > 0) {
-        rows.push({ ...base, itemCode: i.itemCode, kind: "bundle", quantity: i.minQty, getQuantity: null, price, discount: null });
+        rows.push({
+          ...base,
+          itemCode: i.itemCode,
+          kind: "bundle",
+          quantity: i.minQty,
+          getQuantity: null,
+          price,
+          discount: null,
+          maxUnits: i.maxQty ?? (limit ? limit * i.minQty : null),
+        });
       }
     }
   } else if (groups.length === 2) {
@@ -125,6 +163,7 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
           getQuantity: get.minQty,
           price: null,
           discount: rate / 100,
+          maxUnits: limit ? limit * (buy.minQty + get.minQty) : null,
         });
       }
     }
@@ -147,6 +186,7 @@ function toRawItem(n: Node): RawItem | null {
     minQty,
     discountRate: num(text(n.discountrate)),
     discountedPrice: num(text(n.discountedprice)),
+    maxQty: (num(text(n.maxqty)) ?? 0) > 0 ? num(text(n.maxqty)) : null,
     weighted: text(n.biswighted) === "1" || text(n.bisweighted) === "1",
   };
 }

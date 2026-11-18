@@ -10,26 +10,40 @@
  * Only whole units of the same product count; deals across different
  * products ("הזול מביניהם") and weighted items are left for later.
  */
-export type Promotion =
-  | { kind: "unitPrice"; price: number; description: string }
-  | { kind: "bundle"; quantity: number; price: number; description: string }
-  | { kind: "buyGet"; buy: number; get: number; discount: number; description: string };
+export type Promotion = (
+  | { kind: "unitPrice"; price: number }
+  | { kind: "bundle"; quantity: number; price: number }
+  | { kind: "buyGet"; buy: number; get: number; discount: number }
+) & {
+  description: string;
+  /**
+   * The deal needs this much spent on other products in the same store
+   * ("מעל 100"). optimize() applies it only when the rest of that store's
+   * lines reach it; choosePromo() itself does not check it.
+   */
+  minPurchase?: number;
+  /** At most this many units at the deal price per customer; the rest at the regular price. */
+  maxUnits?: number;
+};
 
 /**
  * What `qty` units cost with this promotion, given the regular unit price.
  * Never more than the regular total: a "deal" that costs more is ignored.
  */
 export function promoCost(regular: number, qty: number, p: Promotion): number {
-  const plain = regular * qty;
-  let cost: number;
+  // Units beyond the per-customer limit are at the regular price.
+  const dealUnits = Math.min(qty, p.maxUnits ?? qty);
+  return round(Math.min(dealCost(regular, dealUnits, p) + (qty - dealUnits) * regular, regular * qty));
+}
+
+/** What `qty` units cost under the deal, with no limit. */
+function dealCost(regular: number, qty: number, p: Promotion): number {
   switch (p.kind) {
     case "unitPrice":
-      cost = p.price * qty;
-      break;
+      return p.price * qty;
     case "bundle":
       // Full bundles at the bundle price, the rest at the regular price.
-      cost = Math.floor(qty / p.quantity) * p.price + (qty % p.quantity) * regular;
-      break;
+      return Math.floor(qty / p.quantity) * p.price + (qty % p.quantity) * regular;
     case "buyGet": {
       // Each full set of buy+get units: `buy` at full price, `get` discounted.
       // In a partial set, units beyond `buy` are already discounted.
@@ -37,14 +51,13 @@ export function promoCost(regular: number, qty: number, p: Promotion): number {
       const sets = Math.floor(qty / set);
       const rest = qty % set;
       const discounted = regular * (1 - p.discount);
-      cost =
+      return (
         sets * (p.buy * regular + p.get * discounted) +
         Math.min(rest, p.buy) * regular +
-        Math.max(0, rest - p.buy) * discounted;
-      break;
+        Math.max(0, rest - p.buy) * discounted
+      );
     }
   }
-  return round(Math.min(cost, plain));
 }
 
 /** How a basket line is bought once promotions are taken into account. */

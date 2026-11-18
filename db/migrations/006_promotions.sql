@@ -12,6 +12,8 @@ CREATE TABLE store_promotions (
   get_quantity  INT,                     -- buyGet: units discounted
   price         NUMERIC(10,2),           -- unitPrice: per unit; bundle: for the bundle
   discount      NUMERIC(4,3),            -- buyGet: 1 = free, 0.5 = half price
+  min_purchase  NUMERIC(10,2),           -- spend this much on other products in the store first
+  max_units     INT,                     -- unitPrice: at most this many units at the price
   starts_at     TIMESTAMPTZ NOT NULL,
   ends_at       TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (store_id, product_id, promotion_id)

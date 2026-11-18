@@ -110,6 +110,8 @@ describe.skipIf(!url)("database loading", () => {
       getQuantity: null,
       price: 12,
       discount: null,
+      minPurchase: null,
+      maxUnits: null,
       startsAt: day(1),
       endsAt: day(30),
     });

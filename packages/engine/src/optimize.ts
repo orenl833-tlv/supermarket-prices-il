@@ -112,7 +112,9 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
       const price = prices.get(store.id)?.get(item.productId);
       let option: { line: PlanLine; penalty: number } | null = null;
       if (price !== undefined) {
-        option = { line: exactLine(item, price, promotions?.get(store.id)?.get(item.productId) ?? []), penalty: 0 };
+        // Deals with a minimum purchase wait for the second pass, when the store's other lines are known.
+        const unconditional = (promotions?.get(store.id)?.get(item.productId) ?? []).filter((p) => !p.minPurchase);
+        option = { line: exactLine(item, price, unconditional), penalty: 0 };
       }
       // A substitute is an option where the exact product is missing, or anywhere
       // for an "any brand" item; then it wins only if it is cheaper overall.
@@ -151,6 +153,10 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
     }
   }
 
+  if (promotions) {
+    for (const store of combo) applyMinimumPurchaseDeals(linesByStore.get(store.id)!, basket, promotions.get(store.id));
+  }
+
   const stops: PlanStop[] = combo.map((store) => {
     const lines = linesByStore.get(store.id)!;
     return { store, lines, subtotal: money(sum(lines.map((l) => l.lineTotal))) };
@@ -175,6 +181,43 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
     substitutionCost,
     score: money(itemsCost + fixedCost + penaltyCost + substitutionCost),
   };
+}
+
+/**
+ * Deals that need a minimum purchase in the store ("ביסלי ב-50% מעל 100"):
+ * apply one to a line when the store's other lines already reach the minimum
+ * (the product itself does not count, as the owner specified). Otherwise
+ * note how much more would unlock it. Runs after every item has a store,
+ * because only then is each store's total known.
+ */
+function applyMinimumPurchaseDeals(
+  lines: PlanLine[],
+  basket: BasketItem[],
+  storePromotions: ReadonlyMap<number, readonly Promotion[]> | undefined,
+): void {
+  if (!storePromotions) return;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (line.substituteFor !== undefined) continue;
+    const all = storePromotions.get(line.productId) ?? [];
+    const conditional = all.filter((p) => p.minPurchase);
+    const item = basket.find((b) => b.productId === line.productId);
+    if (conditional.length === 0 || !item) continue;
+
+    const others = sum(lines.filter((_, j) => j !== i).map((l) => l.lineTotal));
+    const unlocked = conditional.filter((p) => p.minPurchase! <= others);
+    if (unlocked.length > 0) {
+      const repriced = exactLine(item, line.unitPrice, [...all.filter((p) => !p.minPurchase), ...unlocked]);
+      if (repriced.lineTotal < line.lineTotal) lines[i] = repriced;
+    } else {
+      const nearest = conditional.reduce((a, b) => (a.minPurchase! <= b.minPurchase! ? a : b));
+      line.unlock = {
+        minPurchase: nearest.minPurchase!,
+        missing: money(nearest.minPurchase! - others),
+        promotion: nearest.description,
+      };
+    }
+  }
 }
 
 /** The line for the exact product, priced with its promotions if any. */

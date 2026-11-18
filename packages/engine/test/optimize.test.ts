@@ -320,3 +320,35 @@ describe("optimize with promotions", () => {
     expect(best!.itemsCost).toBe(20);
   });
 });
+
+describe("optimize with minimum-purchase deals", () => {
+  // Bisli 15.90; "ב-7.95 מעל 100" in store 1. Product 31 is the rest of the basket.
+  const stores = [store(1)];
+  const bisli = { kind: "unitPrice" as const, price: 7.95, minPurchase: 100, maxUnits: 2, description: "ביסלי ב-50% מעל 100" };
+  const promotions = new Map([[1, new Map([[30, [bisli]]])]]);
+  const run = (otherPrice: number) => {
+    const prices = table({ 1: { 30: 15.9, 31: otherPrice } });
+    const basket = [item(30), item(31)];
+    const [best] = optimize({
+      basket,
+      stores,
+      prices,
+      promotions,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: 0,
+    });
+    return best!.stops[0]!.lines.find((l) => l.productId === 30)!;
+  };
+
+  it("applies the deal when the rest of the basket reaches the minimum, not counting the product", () => {
+    expect(run(100)).toMatchObject({ lineTotal: 7.95, promotion: "ביסלי ב-50% מעל 100" });
+  });
+
+  it("otherwise says how much more unlocks it (the product's own price does not count)", () => {
+    const line = run(90); // 90 + 15.90 is over 100, but the product itself does not count
+    expect(line.lineTotal).toBe(15.9);
+    expect(line.unlock).toEqual({ minPurchase: 100, missing: 10, promotion: "ביסלי ב-50% מעל 100" });
+  });
+});

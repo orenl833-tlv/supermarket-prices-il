@@ -246,9 +246,12 @@ export async function activePromotions(
     get_quantity: number | null;
     price: number | null;
     discount: number | null;
+    min_purchase: number | null;
+    max_units: number | null;
   }>(
     `SELECT store_id, product_id, description, kind, quantity, get_quantity,
-            price::float AS price, discount::float AS discount
+            price::float AS price, discount::float AS discount,
+            min_purchase::float AS min_purchase, max_units
      FROM store_promotions
      WHERE store_id = ANY($1::int[]) AND product_id = ANY($2::int[])
        AND starts_at <= $3 AND ends_at > $3`,
@@ -272,14 +275,79 @@ function toPromotion(r: {
   get_quantity: number | null;
   price: number | null;
   discount: number | null;
+  min_purchase: number | null;
+  max_units: number | null;
 }): Promotion | null {
-  const { description } = r;
-  if (r.kind === "unitPrice" && r.price) return { kind: "unitPrice", price: r.price, description };
-  if (r.kind === "bundle" && r.quantity && r.price) return { kind: "bundle", quantity: r.quantity, price: r.price, description };
+  const common = {
+    description: r.description,
+    ...(r.min_purchase ? { minPurchase: r.min_purchase } : {}),
+    ...(r.max_units ? { maxUnits: r.max_units } : {}),
+  };
+  if (r.kind === "unitPrice" && r.price) return { kind: "unitPrice", price: r.price, ...common };
+  if (r.kind === "bundle" && r.quantity && r.price) return { kind: "bundle", quantity: r.quantity, price: r.price, ...common };
   if (r.kind === "buyGet" && r.quantity && r.get_quantity && r.discount) {
-    return { kind: "buyGet", buy: r.quantity, get: r.get_quantity, discount: r.discount, description };
+    return { kind: "buyGet", buy: r.quantity, get: r.get_quantity, discount: r.discount, ...common };
   }
   return null;
+}
+
+export interface UnlockedDeal {
+  productId: number;
+  name: string;
+  description: string;
+  minPurchase: number;
+  regularPrice: number;
+  dealPrice: number;
+}
+
+/**
+ * Deals with a minimum purchase on products not in the basket, per store:
+ * "your basket here is over 100, so you can also get Bisli at 7.95 instead
+ * of 15.90". Only unit-price deals, which have a clear price to show, and
+ * only real savings. Best savings first, at most `perStore` per store.
+ */
+export async function unlockableDeals(
+  db: pg.Pool,
+  storeIds: number[],
+  basketProductIds: number[],
+  perStore = 3,
+  now = new Date(),
+): Promise<Map<number, UnlockedDeal[]>> {
+  const { rows } = await db.query<{
+    store_id: number;
+    product_id: number;
+    name: string;
+    description: string;
+    min_purchase: number;
+    regular: number;
+    deal: number;
+  }>(
+    `SELECT sp.store_id, sp.product_id, p.name, sp.description, sp.min_purchase::float AS min_purchase,
+            pc.price::float AS regular, sp.price::float AS deal
+     FROM store_promotions sp
+     JOIN products p ON p.id = sp.product_id
+     JOIN price_changes pc ON pc.store_id = sp.store_id AND pc.product_id = sp.product_id AND pc.valid_to IS NULL
+     WHERE sp.store_id = ANY($1::int[]) AND sp.product_id <> ALL($2::int[])
+       AND sp.kind = 'unitPrice' AND sp.min_purchase > 0 AND sp.price < pc.price
+       AND sp.starts_at <= $3 AND sp.ends_at > $3
+     ORDER BY sp.store_id, 1 - sp.price / pc.price DESC`,
+    [storeIds, basketProductIds, now],
+  );
+  const byStore = new Map<number, UnlockedDeal[]>();
+  for (const r of rows) {
+    const list = byStore.get(r.store_id) ?? [];
+    if (list.length >= perStore || list.some((d) => d.productId === r.product_id)) continue;
+    list.push({
+      productId: r.product_id,
+      name: r.name,
+      description: r.description,
+      minPurchase: r.min_purchase,
+      regularPrice: r.regular,
+      dealPrice: r.deal,
+    });
+    byStore.set(r.store_id, list);
+  }
+  return byStore;
 }
 
 /**

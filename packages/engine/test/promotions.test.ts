@@ -71,3 +71,16 @@ describe("choosePromo", () => {
     expect(choosePromo(11, 2, [twoFor24])).toEqual({ quantity: 2, lineTotal: 22, extraUnits: 0 });
   });
 });
+
+describe("per-customer limits", () => {
+  it("charges units beyond the limit at the regular price", () => {
+    const limited: Promotion = { kind: "unitPrice", price: 5, maxUnits: 2, description: "ב-5, עד 2" };
+    expect(promoCost(10, 2, limited)).toBe(10);
+    expect(promoCost(10, 3, limited)).toBe(20);
+  });
+
+  it("limits bundles too", () => {
+    const limited: Promotion = { kind: "bundle", quantity: 2, price: 10, maxUnits: 2, description: "2ב10 מו2" };
+    expect(promoCost(8, 4, limited)).toBe(26); // one bundle, then two at 8
+  });
+});

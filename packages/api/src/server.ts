@@ -12,6 +12,7 @@ import {
   productNames,
   productsByIds,
   searchProducts,
+  unlockableDeals,
   storesNear,
 } from "./queries.js";
 
@@ -200,6 +201,9 @@ export function buildServer(
       const usedIds = plans.flatMap((p) => p.stops.flatMap((s) => s.lines.map((l) => l.productId)));
       const names = await productNames(db, [...new Set([...productIds, ...usedIds])]);
       const storeById = new Map(stores.map((s) => [s.id, s]));
+      // Deals the basket unlocks in each store it uses ("מעל 100"), on products not in the basket.
+      const planStoreIds = [...new Set(plans.flatMap((p) => p.stops.map((s) => s.store.id)))];
+      const deals = await unlockableDeals(db, planStoreIds, productIds);
 
       return {
         storesConsidered: stores.length,
@@ -207,7 +211,11 @@ export function buildServer(
         productNames: Object.fromEntries(names),
         plans: plans.map((p) => ({
           ...p,
-          stops: p.stops.map((s) => ({ ...s, store: storeById.get(s.store.id) })),
+          stops: p.stops.map((s) => ({
+            ...s,
+            store: storeById.get(s.store.id),
+            unlockedDeals: (deals.get(s.store.id) ?? []).filter((d) => d.minPurchase <= s.subtotal),
+          })),
         })),
       };
     },
