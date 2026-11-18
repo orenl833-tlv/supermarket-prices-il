@@ -284,3 +284,39 @@ describe("optimize, any brand", () => {
     expect(run(false)?.substituteFor).toBeUndefined();
   });
 });
+
+describe("optimize with promotions", () => {
+  // Rice: 10 in store 1, 8 in store 2. Store 1 has 2+1 on rice.
+  const stores = [store(1), store(2)];
+  const prices = table({ 1: { 20: 10 }, 2: { 20: 8 } });
+  const promotions = new Map([
+    [1, new Map([[20, [{ kind: "buyGet" as const, buy: 2, get: 1, discount: 1, description: "2+1 אורז" }]]])],
+  ]);
+  const run = (quantity: number) => {
+    const basket = [item(20, "normal", quantity)];
+    return optimize({
+      basket,
+      stores,
+      prices,
+      promotions,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: 0,
+    });
+  };
+
+  it("2 bags: the store with 2+1 costs 20 for 3 bags, but the other store's 2 bags at 16 still win", () => {
+    const [best, second] = run(2);
+    expect(best!.stops[0]!.store.id).toBe(2);
+    expect(best!.itemsCost).toBe(16);
+    expect(second!.stops[0]!.lines[0]).toMatchObject({ quantity: 3, lineTotal: 20, extraUnits: 1, promotion: "2+1 אורז" });
+  });
+
+  it("3 bags: 2+1 makes the dearer store cheaper (20 vs 24)", () => {
+    const [best] = run(3);
+    expect(best!.stops[0]!.store.id).toBe(1);
+    expect(best!.stops[0]!.lines[0]).toMatchObject({ quantity: 3, lineTotal: 20, promotion: "2+1 אורז" });
+    expect(best!.itemsCost).toBe(20);
+  });
+});

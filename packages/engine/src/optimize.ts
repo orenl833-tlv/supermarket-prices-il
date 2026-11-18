@@ -1,3 +1,4 @@
+import { choosePromo, type Promotion } from "./promotions.js";
 import type {
   BasketItem,
   CostModel,
@@ -43,7 +44,14 @@ export interface OptimizeInput {
    * also satisfies "must".
    */
   substitutes?: SubstituteTable;
+  /**
+   * Active promotions per store and product. A line is priced with the best
+   * one, and may buy a few more units when they cost nothing (see choosePromo).
+   */
+  promotions?: PromotionTable;
 }
+
+export type PromotionTable = ReadonlyMap<number, ReadonlyMap<number, readonly Promotion[]>>;
 
 /**
  * Find the cheapest way to buy a basket from a set of nearby stores.
@@ -90,7 +98,7 @@ export function optimize(input: OptimizeInput): Plan[] {
 
 /** Price one combination of stores, or null if it is not a valid plan. */
 function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
-  const { basket, prices, costModel, penalties, missingTripCost, substitutes } = input;
+  const { basket, prices, costModel, penalties, missingTripCost, substitutes, promotions } = input;
   const linesByStore = new Map<number, PlanLine[]>(combo.map((s) => [s.id, []]));
   const missing: MissingItem[] = [];
   let substitutionCost = 0;
@@ -104,10 +112,7 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
       const price = prices.get(store.id)?.get(item.productId);
       let option: { line: PlanLine; penalty: number } | null = null;
       if (price !== undefined) {
-        option = {
-          line: { productId: item.productId, quantity: item.quantity, unitPrice: price, lineTotal: money(price * item.quantity) },
-          penalty: 0,
-        };
+        option = { line: exactLine(item, price, promotions?.get(store.id)?.get(item.productId) ?? []), penalty: 0 };
       }
       // A substitute is an option where the exact product is missing, or anywhere
       // for an "any brand" item; then it wins only if it is cheaper overall.
@@ -170,6 +175,27 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
     substitutionCost,
     score: money(itemsCost + fixedCost + penaltyCost + substitutionCost),
   };
+}
+
+/** The line for the exact product, priced with its promotions if any. */
+function exactLine(item: BasketItem, price: number, promos: readonly Promotion[]): PlanLine {
+  const choice = choosePromo(price, item.quantity, promos);
+  const line: PlanLine = {
+    productId: item.productId,
+    quantity: choice.quantity,
+    unitPrice: price,
+    lineTotal: money(choice.lineTotal),
+  };
+  if (choice.promotion) line.promotion = choice.promotion.description;
+  if (choice.extraUnits > 0) line.extraUnits = choice.extraUnits;
+  if (choice.suggestion) {
+    line.suggestion = {
+      quantity: choice.suggestion.quantity,
+      extraCost: choice.suggestion.extraCost,
+      promotion: choice.suggestion.promotion.description,
+    };
+  }
+  return line;
 }
 
 /**
