@@ -132,6 +132,35 @@ describe.skipIf(!url)("API", () => {
     expect(body.productNames[milk]).toBe("חלב 3% שומן 1 ליטר");
   });
 
+  it("prices promotions: 1+1 on bread makes the dearer chain cheaper for two loaves", async () => {
+    const bread = (await search("לחם"))[0].id;
+    const dear = (await pool.query("SELECT id FROM stores WHERE name = 'יקרה מרכז'")).rows[0].id;
+    await pool.query(
+      `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, quantity, get_quantity, discount, starts_at, ends_at)
+       VALUES ($1, $2, 'P1', '1+1 לחם', 'buyGet', 1, 1, 1, now() - interval '1 day', now() + interval '1 day')`,
+      [dear, bread],
+    );
+    const compare = async (quantity: number) =>
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/compare",
+          payload: { ...center, radiusKm: 2, items: [{ productId: bread, quantity }] },
+        })
+      ).json().plans[0];
+    try {
+      // Two loaves: 9 with 1+1 at יקרה, against 2 × 7 = 14 at זולה.
+      const two = await compare(2);
+      expect(two.stops[0].store.name).toBe("יקרה מרכז");
+      expect(two.stops[0].lines[0]).toMatchObject({ quantity: 2, lineTotal: 9, promotion: "1+1 לחם" });
+      // One loaf: 1+1 still gives two for 9, but one loaf at זולה is 7.
+      const one = await compare(1);
+      expect(one.stops[0].store.name).toBe("זולה מרכז");
+    } finally {
+      await pool.query("DELETE FROM store_promotions");
+    }
+  });
+
   it("offers a close substitute in a store that lacks the exact product", async () => {
     const [eggsA] = await search("ביצים L ארוזות");
     const [bread] = await search("לחם");

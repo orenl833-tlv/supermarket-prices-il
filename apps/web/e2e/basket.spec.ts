@@ -150,6 +150,21 @@ test("shows the address that 'my location' resolved to", async ({ page, context 
   await expect(page.getByLabel("מאיפה יוצאים")).toContainText("המיקום שלי: דיזנגוף 50, לב העיר");
 });
 
+test("suggests completing a 2+1 deal, and takes it up in one tap", async ({ page }) => {
+  await add(page, "לחם");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.getByRole("heading")).toHaveText("זולה זולה דיזנגוף");
+  // One loaf asked: 2+1 is only suggested; two more loaves cost 7.
+  const suggestion = best.getByRole("button", { name: /עוד 2 ב-.*7.*2\+1 לחם אחיד/ });
+  await expect(suggestion).toBeVisible();
+  await suggestion.click();
+  // The basket now has 3 loaves, the comparison runs again, and 3 cost 14.
+  await expect(page.locator(".plan.best .price strong")).toContainText("14.00");
+  await expect(page.locator(".plan.best")).toContainText("מבצע");
+  await expect(page.locator(".plan.best")).toContainText("× 3");
+});
+
 test("adds a list typed with spaces", async ({ page }) => {
   await page.getByLabel("מה צריך לקנות?").fill("חלב לחם");
   const preview = page.getByLabel("רשימה שהוקלדה");
@@ -164,4 +179,19 @@ test("sorts search results by price per unit on request", async ({ page }) => {
   await page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' }).click();
   await expect(page.getByRole("radio", { name: 'הכי זול לק"ג/ליטר' })).toHaveAttribute("aria-checked", "true");
   await expect(page.locator(".result").first()).toContainText("ביצים L ארוזות"); // 12 for 12 before 12 for 13
+});
+
+test("offers deals the basket unlocks with a minimum purchase, and adds one in a tap", async ({ page }) => {
+  await add(page, "חלב");
+  await add(page, "לחם");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.getByRole("heading")).toHaveText("זולה זולה דיזנגוף");
+  const unlocked = best.locator(".unlocked");
+  await expect(unlocked).toContainText("ביצים L ארוזות");
+  await expect(unlocked).toContainText("ביצים ב-6 מעל 10");
+  await unlocked.getByRole("button", { name: "הוספה" }).click();
+  await expect(page.locator(".basket-item")).toHaveCount(3);
+  // Compared again: milk 6.50 + bread 7 = 13.50 reaches the minimum, so the eggs cost 6.
+  await expect(page.locator(".plan.best .price strong")).toContainText("19.50");
 });

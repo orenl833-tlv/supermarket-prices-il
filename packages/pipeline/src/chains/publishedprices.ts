@@ -22,6 +22,9 @@ export function publishedPricesChain(opts: {
   let priceFullFiles: Promise<RemoteFile[]> | null = null;
   const allPriceFull = () =>
     (priceFullFiles ??= getSession().then((s) => s.list(`PriceFull${opts.code}`)));
+  let promoFullFiles: Promise<RemoteFile[]> | null = null;
+  const allPromoFull = () =>
+    (promoFullFiles ??= getSession().then((s) => s.list(`PromoFull${opts.code}`)));
 
   return {
     code: opts.code,
@@ -36,6 +39,13 @@ export function publishedPricesChain(opts: {
 
     async latestPriceFullFile(storeCode) {
       const files = (await allPriceFull()).filter(
+        (f) => parseFileName(f.name)?.storeCode === storeCode,
+      );
+      return newest(files);
+    },
+
+    async latestPromoFullFile(storeCode) {
+      const files = (await allPromoFull()).filter(
         (f) => parseFileName(f.name)?.storeCode === storeCode,
       );
       return newest(files);

@@ -1,4 +1,5 @@
 import type pg from "pg";
+import type { PromoRow } from "../promotions.js";
 import type { PriceItem, StoreRecord } from "../types.js";
 
 type Db = pg.Pool | pg.PoolClient;
@@ -156,4 +157,50 @@ function columns(items: PriceItem[]) {
     items.map((i) => i.unit),
     items.map((i) => i.isWeighted),
   ];
+}
+
+/**
+ * Replace a branch's promotions with those of its newest PromoFull file.
+ * Item codes are mapped to products through chain_products; promotions on
+ * products the branch's price file never listed are dropped (we could not
+ * price them anyway). Returns the number of rows stored.
+ */
+export async function replacePromotions(
+  db: Db,
+  chainId: number,
+  storeId: number,
+  rows: PromoRow[],
+): Promise<number> {
+  await db.query("DELETE FROM store_promotions WHERE store_id = $1", [storeId]);
+  if (rows.length === 0) return 0;
+  const { rowCount } = await db.query(
+    `INSERT INTO store_promotions
+       (store_id, product_id, promotion_id, description, kind, quantity, get_quantity, price, discount,
+        min_purchase, max_units, starts_at, ends_at)
+     SELECT $1, cp.product_id, r.promotion_id, r.description, r.kind, r.quantity, r.get_quantity, r.price, r.discount,
+            r.min_purchase, r.max_units, r.starts_at, r.ends_at
+     FROM unnest($3::text[], $4::text[], $5::text[], $6::text[], $7::int[], $8::int[], $9::numeric[],
+                 $10::numeric[], $11::numeric[], $12::int[], $13::timestamptz[], $14::timestamptz[])
+          AS r(item_code, promotion_id, description, kind, quantity, get_quantity, price, discount,
+               min_purchase, max_units, starts_at, ends_at)
+     JOIN chain_products cp ON cp.chain_id = $2 AND cp.item_code = r.item_code
+     ON CONFLICT DO NOTHING`,
+    [
+      storeId,
+      chainId,
+      rows.map((r) => r.itemCode),
+      rows.map((r) => r.promotionId),
+      rows.map((r) => r.description),
+      rows.map((r) => r.kind),
+      rows.map((r) => r.quantity),
+      rows.map((r) => r.getQuantity),
+      rows.map((r) => r.price),
+      rows.map((r) => r.discount),
+      rows.map((r) => r.minPurchase),
+      rows.map((r) => r.maxUnits),
+      rows.map((r) => r.startsAt),
+      rows.map((r) => r.endsAt),
+    ],
+  );
+  return rowCount ?? 0;
 }

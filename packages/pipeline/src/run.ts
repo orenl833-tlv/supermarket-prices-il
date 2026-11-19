@@ -6,7 +6,7 @@ import { shufersal } from "./chains/shufersal.js";
 import { doralon, ramiLevy, yochananof } from "./chains/publishedprices.js";
 import { areaFromEnv, isInArea } from "./area.js";
 import type { ChainSource } from "./chains/types.js";
-import { applyPrices, upsertChain, upsertProducts, upsertStores } from "./db/load.js";
+import { applyPrices, replacePromotions, upsertChain, upsertProducts, upsertStores } from "./db/load.js";
 import { migrate } from "./db/migrate.js";
 import { createPool, inTransaction } from "./db/pool.js";
 import { decodeFile } from "./encoding.js";
@@ -14,6 +14,7 @@ import { parseFileName } from "./filename.js";
 import { classifyProducts } from "./classify.js";
 import { geocodeStores } from "./geocode.js";
 import { parsePriceFull, parseStores } from "./parse.js";
+import { parsePromoFull } from "./promotions.js";
 import { checkPriceFile } from "./quality.js";
 
 /**
@@ -59,6 +60,11 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
       for (const [storeCode, storeId] of storeIds) {
         const outcome = await ingestStore(pool, chain, chainId, storeCode, storeId);
         totals[outcome]++;
+        // Promotions only adjust prices, so a problem with them is logged but
+        // does not fail the run: the branch's regular prices are still right.
+        await ingestPromotions(pool, chain, chainId, storeCode, storeId).catch((err) =>
+          console.warn(`${chain.name} #${storeCode}: promotions: ${message(err)}`),
+        );
       }
     } catch (err) {
       console.error(`${chain.name}: ${message(err)}`);
@@ -160,6 +166,41 @@ async function ingestStore(
     console.error(`${label}: failed: ${message(err)}`);
     return "failed";
   }
+}
+
+/**
+ * Load a branch's newest PromoFull file, unless it was already loaded. Its
+ * promotions replace the branch's previous ones in one transaction.
+ */
+async function ingestPromotions(
+  pool: pg.Pool,
+  chain: ChainSource,
+  chainId: number,
+  storeCode: string,
+  storeId: number,
+): Promise<void> {
+  const file = await chain.latestPromoFullFile(storeCode);
+  if (!file) return;
+  const info = parseFileName(file.name);
+  if (!info) throw new Error(`unexpected file name ${file.name}`);
+  const { rows: seen } = await pool.query(
+    "SELECT 1 FROM promo_runs WHERE file_name = $1 OR (store_id = $2 AND file_time >= $3) LIMIT 1",
+    [file.name, storeId, info.time],
+  );
+  if (seen.length > 0) return;
+
+  const parsed = parsePromoFull(decodeFile(await chain.download(file)), info.time);
+  if (parsed.chainCode !== chain.code) throw new Error(`file is for chain ${parsed.chainCode}`);
+  const skipped = Object.values(parsed.skipped).reduce((a, b) => a + b, 0);
+  const stored = await inTransaction(pool, async (client) => {
+    const n = await replacePromotions(client, chainId, storeId, parsed.rows);
+    await client.query(
+      `INSERT INTO promo_runs (store_id, file_name, file_time, promotions, skipped) VALUES ($1, $2, $3, $4, $5)`,
+      [storeId, file.name, info.time, n, skipped],
+    );
+    return n;
+  });
+  console.log(`${chain.name} #${storeCode}: ${stored} promotion rows, ${skipped} promotions left out`);
 }
 
 /**

@@ -35,6 +35,14 @@ export const carrefour: ChainSource = (() => {
       );
     },
 
+    async latestPromoFullFile(storeCode) {
+      return newest(
+        (await files()).filter(
+          (f) => f.name.startsWith("PromoFull") && parseFileName(f.name)?.storeCode === storeCode,
+        ),
+      );
+    },
+
     download(file) {
       return fetchBytes(file.url);
     },

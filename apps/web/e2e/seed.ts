@@ -59,6 +59,19 @@ export async function seed(pool: pg.Pool): Promise<void> {
     { productId: bIds.get(EGGS_B.itemCode)!, price: 13 },
   ]);
 
+  // Promotion: 2+1 on bread at "זולה" (for the promotion test).
+  await pool.query(
+    `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, quantity, get_quantity, discount, starts_at, ends_at)
+     VALUES ($1, $2, 'E2E1', '2+1 לחם אחיד', 'buyGet', 2, 1, 1, now() - interval '1 day', now() + interval '30 days')`,
+    [a.storeId, aIds.get(BREAD.itemCode)!],
+  );
+  // A minimum-purchase deal: eggs at 6 instead of 12 when spending over 10 on other products.
+  await pool.query(
+    `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, price, min_purchase, starts_at, ends_at)
+     VALUES ($1, $2, 'E2E2', 'ביצים ב-6 מעל 10', 'unitPrice', 6, 10, now() - interval '1 day', now() + interval '30 days')`,
+    [a.storeId, aIds.get(EGGS_A.itemCode)!],
+  );
+
   await classifyProducts(pool);
 
   // Freshness: chain "זולה" updated an hour ago, chain "יקרה" three days ago.

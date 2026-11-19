@@ -52,8 +52,18 @@ export function App() {
       .catch(() => setError("לא הצלחנו לפתוח את הרשימה ששותפה."));
   }, []);
 
-  // Any change to the basket or settings makes old results stale.
-  useEffect(() => setResult(null), [basket, settings]);
+  // Any change to the basket or settings makes old results stale, unless the
+  // change came from the results themselves (taking up a deal): then compare again.
+  const [recompare, setRecompare] = useState(false);
+  useEffect(() => {
+    setResult(null);
+    if (recompare) {
+      setRecompare(false);
+      void run();
+    }
+    // run reads the latest basket; it is not a dependency on purpose.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basket, settings]);
 
   const inBasket = useMemo(() => new Set(basket.map((e) => e.product.id)), [basket]);
 
@@ -122,6 +132,19 @@ export function App() {
             result={result}
             origin={settings.location}
             updatedAt={Object.fromEntries(freshness.map((f) => [f.chain, f.updatedAt]))}
+            onAddProduct={(productId) => {
+              productsByIds([productId])
+                .then(([product]) => {
+                  if (!product) return;
+                  setRecompare(true);
+                  setBasket((b) => [...b, { product, quantity: 1, importance: "normal", anyBrand: false }]);
+                })
+                .catch(() => setError("לא הצלחנו להוסיף את המוצר."));
+            }}
+            onAddUnits={(productId, units) => {
+              setRecompare(true);
+              setBasket((b) => b.map((e) => (e.product.id === productId ? { ...e, quantity: e.quantity + units } : e)));
+            }}
           />
         )}
       </main>

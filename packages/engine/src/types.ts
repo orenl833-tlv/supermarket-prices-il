@@ -55,6 +55,17 @@ export interface PlanLine {
   lineTotal: number;
   /** Set when this line is a substitute: the basket product it replaces. */
   substituteFor?: number;
+  /** The promotion that priced this line, as the chain describes it ("2+1"). */
+  promotion?: string;
+  /** Units added on top of the request because they were free or made it cheaper. */
+  extraUnits?: number;
+  /** A deal the customer could complete by adding units; not included in the total. */
+  suggestion?: { quantity: number; extraCost: number; promotion: string };
+  /**
+   * A deal on this product that needs a minimum purchase in the store, not
+   * reached yet: spend `missing` more on other products to unlock it.
+   */
+  unlock?: { minPurchase: number; missing: number; promotion: string };
 }
 
 export interface PlanStop {

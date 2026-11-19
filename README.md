@@ -19,12 +19,13 @@ Under Israel's food price transparency law, large supermarket chains publish the
 - Search by name or barcode, with price per litre, kg or egg; typing a category ("ביצים") offers "eggs, any brand" in one tap.
 - Shows the results on a map, shares a list as a link (WhatsApp-friendly, no accounts), installs on a phone and opens the list without a connection.
 - Sends the chosen plan as a shopping list grouped by store.
+- Applies promotions: takes free units (2+1 when you want 2 gives 3 for the price of 2) and suggests deals that cost a little more.
 - Flags a chain whose prices are out of date, and shows per chain how many branches and products were loaded and when.
 - Runs unattended: a daily update with hourly retries through the morning, failure alerts as GitHub issues, and no AI calls or paid services.
 
 ## Status
 
-Phase 1 is complete and live: Tel Aviv, regular prices, no delivery. Six chains, 106 branches. Four are loaded on GitHub's runners; Carrefour and Victory block foreign IPs and are loaded by a self-hosted runner in Israel.
+Phase 1 is complete and live: Tel Aviv, regular prices and promotions, no delivery. Six chains, 106 branches. Four are loaded on GitHub's runners; Carrefour and Victory block foreign IPs and are loaded by a self-hosted runner in Israel.
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (106 Tel Aviv branches, a few minutes)
@@ -158,7 +159,7 @@ The daily run costs nothing and makes no AI calls: classification is rule-based.
 ## Known limitations
 
 - Products are matched across chains by barcode, and by close substitutes only within the 23 staple categories. Other products with chain-internal codes cannot be compared yet; the search shows when a product is sold by one chain only.
-- Regular prices only; promotions are not applied.
+- Promotions: only deals for all customers on a single product (unit price, N for X, buy N get M). Coupons, club deals, hour-limited, minimum-purchase and cross-product deals are left out.
 - Carrefour and Victory only answer Israeli IP addresses, and GitHub's runners are abroad. They are loaded by `ingest-israel.yml` on a self-hosted runner on a home computer in Israel (`ISRAEL_CHAINS=only`). When that computer is off, their prices go stale and the site says so; the other four chains are unaffected.
 
 ## Data sources

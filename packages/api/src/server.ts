@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
 import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
+  activePromotions,
   categorySuggestion,
   currentPrices,
   findSubstitutes,
@@ -11,6 +12,7 @@ import {
   productNames,
   productsByIds,
   searchProducts,
+  unlockableDeals,
   segmentList,
   storesNear,
 } from "./queries.js";
@@ -176,7 +178,10 @@ export function buildServer(
       const stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
       const productIds = items.map((i) => i.productId);
       const prices = await currentPrices(db, stores.map((s) => s.id), productIds);
-      const substitutes = await findSubstitutes(db, items, stores.map((s) => s.id), prices);
+      const [substitutes, promotions] = await Promise.all([
+        findSubstitutes(db, items, stores.map((s) => s.id), prices),
+        activePromotions(db, stores.map((s) => s.id), productIds),
+      ]);
 
       const plans = optimize({
         basket: items,
@@ -188,6 +193,7 @@ export function buildServer(
         missingTripCost: extraStopCost,
         onePerChain: true,
         substitutes,
+        promotions,
       });
 
       // Items no nearby store sells, not even as a substitute: shown separately,
@@ -198,6 +204,9 @@ export function buildServer(
       const usedIds = plans.flatMap((p) => p.stops.flatMap((s) => s.lines.map((l) => l.productId)));
       const names = await productNames(db, [...new Set([...productIds, ...usedIds])]);
       const storeById = new Map(stores.map((s) => [s.id, s]));
+      // Deals the basket unlocks in each store it uses ("מעל 100"), on products not in the basket.
+      const planStoreIds = [...new Set(plans.flatMap((p) => p.stops.map((s) => s.store.id)))];
+      const deals = await unlockableDeals(db, planStoreIds, productIds);
 
       return {
         storesConsidered: stores.length,
@@ -205,7 +214,11 @@ export function buildServer(
         productNames: Object.fromEntries(names),
         plans: plans.map((p) => ({
           ...p,
-          stops: p.stops.map((s) => ({ ...s, store: storeById.get(s.store.id) })),
+          stops: p.stops.map((s) => ({
+            ...s,
+            store: storeById.get(s.store.id),
+            unlockedDeals: (deals.get(s.store.id) ?? []).filter((d) => d.minPurchase <= s.subtotal),
+          })),
         })),
       };
     },
