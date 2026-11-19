@@ -297,6 +297,12 @@ describe.skipIf(!url)("API", () => {
     expect((await app.inject({ url: "/api/reverse?lat=48.85&lon=2.35" })).statusCode).toBe(400);
   });
 
+  it("lists today's deals (none here: the fixture has two chains, deals need three)", async () => {
+    const res = await app.inject({ url: "/api/deals" });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ deals: [] });
+  });
+
   it("reports data freshness per chain", async () => {
     const res = await app.inject({ url: "/api/status" });
     expect(res.json().chains).toEqual([

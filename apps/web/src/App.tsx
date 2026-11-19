@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { compare, productsByIds, status, type BasketEntry, type ChainStatus, type CompareResult, type Product } from "./api";
 import { Basket } from "./components/Basket";
+import { Deals } from "./components/Deals";
 import { ProductSearch } from "./components/ProductSearch";
 import { Results } from "./components/Results";
 import { PLACES, Settings, type SearchSettings } from "./components/Settings";
@@ -147,6 +148,14 @@ export function App() {
             }}
           />
         )}
+        <Deals
+          inBasket={inBasket}
+          onAdd={(productId) =>
+            productsByIds([productId])
+              .then(([product]) => product && add(product))
+              .catch(() => setError("לא הצלחנו להוסיף את המוצר."))
+          }
+        />
       </main>
 
       <footer className="muted small">
