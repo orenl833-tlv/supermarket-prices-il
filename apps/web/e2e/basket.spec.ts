@@ -204,8 +204,10 @@ test("says what club membership would save, and applies club deals for members",
   await expect(best).toContainText("אם היית חבר מועדון בזולה, היית חוסך");
   await expect(best.locator(".club-saving")).toContainText("1.50");
 
-  await page.getByText("מועדוני לקוחות").click();
-  await page.getByRole("checkbox", { name: "זולה" }).check();
+  await page.getByRole("button", { name: /מועדון/ }).click();
+  await page.getByRole("switch", { name: "זולה" }).check();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("button", { name: /מועדון/ })).toContainText("1"); // one club marked
   await page.getByRole("button", { name: "איפה הכי זול?" }).click();
   await expect(page.locator(".plan.best .price strong")).toContainText("5.00");
   await expect(page.locator(".plan.best .club-saving")).toHaveCount(0);
