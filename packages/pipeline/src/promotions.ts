@@ -84,6 +84,38 @@ export function parsePromoFull(xml: string, fileTime: Date): PromoFile {
   return { chainCode, storeCode: stripZeros(storeCode), rows, skipped };
 }
 
+/**
+ * Why a file's promotions were left out, with a few examples per reason and
+ * the fields that decided it. For diagnosing a chain whose files differ
+ * (src/diagnose-promotions.ts); the daily run does not use it.
+ */
+export function diagnosePromoFull(xml: string, fileTime: Date): Record<string, { count: number; examples: string[] }> {
+  const doc = parser.parse(xml) as Node;
+  const promotions: Node[] = [];
+  collect(doc, "promotion", promotions);
+  const out: Record<string, { count: number; examples: string[] }> = {};
+  for (const p of promotions) {
+    const result = interpretPromotion(p, fileTime);
+    const reason = typeof result === "string" ? result : "kept";
+    const entry = (out[reason] ??= { count: 0, examples: [] });
+    entry.count++;
+    if (entry.examples.length < 6) {
+      const groups: Node[] = [];
+      collect(p, "group", groups);
+      const items = groups.map((g) => {
+        const its: Node[] = [];
+        collect(g, "promotionitem", its);
+        const i = its[0] ?? {};
+        return `[${its.length} items, reward ${text(i.rewardtype)}, minQty ${text(i.minqty)}, price ${text(i.discountedprice)}, rate ${text(i.discountrate)}, min ${text(g.minpurchaseamount)}]`;
+      });
+      entry.examples.push(
+        `${text(p.promotiondescription)} | club ${text(p.clubid)} | hours ${text(p.promotionstarthour)}-${text(p.promotionendhour)} days ${text(p.promotiondays)} | coupon ${text(p.additionaliscoupon)} | ${items.join(" ")}`,
+      );
+    }
+  }
+  return out;
+}
+
 /** The rows for one promotion, or the reason it is left out. Exported for tests. */
 export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string {
   const description = text(p.promotiondescription) ?? "";

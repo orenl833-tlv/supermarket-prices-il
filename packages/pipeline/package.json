@@ -8,7 +8,8 @@
     "geocode": "tsx src/geocode.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "classify": "tsx src/classify.ts"
+    "classify": "tsx src/classify.ts",
+    "diagnose-promotions": "tsx src/diagnose-promotions.ts"
   },
   "dependencies": {
     "fast-xml-parser": "^5.12.1",

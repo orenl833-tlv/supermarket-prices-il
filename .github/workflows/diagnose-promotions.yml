@@ -1,0 +1,35 @@
+name: Diagnose promotions
+
+# Run by hand: prints why one branch's promotions are left out, with examples.
+# Carrefour and Victory need the self-hosted runner in Israel; the other
+# chains can run on GitHub's runners. Writes nothing.
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: "carrefour | victory | shufersal | ramiLevy | doralon | yochananof"
+        required: true
+        default: carrefour
+      store:
+        description: "Store code, e.g. 85"
+        required: true
+        default: "85"
+      israel:
+        description: "Run on the self-hosted runner in Israel (needed for carrefour and victory)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ${{ inputs.israel && fromJSON('["self-hosted","israel"]') || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run diagnose-promotions -w @spil/pipeline -- ${{ inputs.chain }} ${{ inputs.store }}
