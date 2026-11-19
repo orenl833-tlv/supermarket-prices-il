@@ -119,6 +119,12 @@ export function diagnosePromoFull(xml: string, fileTime: Date): Record<string, {
   return out;
 }
 
+/**
+ * "קופון", or its short forms "קופ." / "קופ " as a word of their own, but not
+ * inside another word: "חטיף מקופלת" is a snack, not a coupon.
+ */
+const COUPON_WORD = /(^|[^א-ת])קופ(ון|\.|\s|$)/;
+
 /** The rows for one promotion, or the reason it is left out. Exported for tests. */
 export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string {
   const description = text(p.promotiondescription) ?? "";
@@ -127,7 +133,7 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   const endsAt = date(text(p.promotionenddatetime));
   if (!promotionId || !startsAt || !endsAt) return "incomplete";
   if (endsAt < fileTime) return "ended";
-  if (text(p.additionaliscoupon) === "1" || /קופ/.test(description)) return "coupon";
+  if (text(p.additionaliscoupon) === "1" || COUPON_WORD.test(description)) return "coupon";
   const club = clubName(text(p.clubid));
   if (limitedHours(text(p.promotionstarthour), text(p.promotionendhour)) || limitedDays(text(p.promotiondays))) {
     return "limited hours";
@@ -219,6 +225,7 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
  *   "2 - מועדון אשראי של הקמעונאי"                 -> "מועדון אשראי של הקמעונאי"
  *   "(2=מועדון קרפור אשראי|2=מועדון אפליקציה)"     -> "מועדון קרפור אשראי / מועדון אפליקציה"
  *   "((2=מועדון לקוחות אשראי))&(3=תווי זיכוי...)" -> "מועדון לקוחות אשראי" (the payment part is dropped)
+ *   "2"                                            -> "מועדון" (Victory: a club without a name)
  */
 export function clubName(clubId: string | null): string | null {
   const id = (clubId ?? "").trim();
@@ -226,7 +233,9 @@ export function clubName(clubId: string | null): string | null {
   const firstGroup = id.split("&")[0]!;
   const names = [...firstGroup.matchAll(/\d+\s*=\s*([^|()]+)/g)].map((m) => m[1]!.trim().replace(/\s+/g, " "));
   if (names.length > 0) return [...new Set(names)].join(" / ");
-  return id.replace(/^\d+\s*-\s*/, "").trim() || "מועדון";
+  // Victory writes only a number ("2"): a club, but unnamed.
+  const name = id.replace(/^\d+\s*-?\s*/, "").trim();
+  return name || "מועדון";
 }
 
 /**
