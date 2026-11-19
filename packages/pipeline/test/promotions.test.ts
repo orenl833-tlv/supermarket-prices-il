@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { limitedHours, parsePromoFull } from "../src/promotions.js";
+import { clubName, limitedHours, parsePromoFull } from "../src/promotions.js";
 
 // Five real promotions from a Shufersal PromoFull file (branch 1, 16.11.2026).
 const xml = readFileSync(new URL("./fixtures/promofull-shufersal-sample.xml", import.meta.url), "utf8");
@@ -35,6 +35,7 @@ describe("parsePromoFull", () => {
     expect(file.rows.some((r) => r.description.includes("קופון"))).toBe(false);
     expect(file.rows.some((r) => r.description.startsWith("84 נעם"))).toBe(false);
     expect(file.skipped).toEqual({ coupon: 1, weighted: 1 });
+    expect(file.rows.every((r) => r.club === null)).toBe(true); // all for every customer
   });
 
   it("drops promotions that ended before the file was published", () => {
@@ -51,5 +52,15 @@ describe("limitedHours", () => {
   it("treats part of the day as a limit", () => {
     expect(limitedHours("08:00", "12:00")).toBe(true);
     expect(limitedHours(null, "20:00")).toBe(true);
+  });
+});
+
+describe("clubName", () => {
+  it("reads each chain's way of writing the club", () => {
+    expect(clubName("0")).toBeNull();
+    expect(clubName("0 - כלל הלקוחות")).toBeNull();
+    expect(clubName("2 - מועדון אשראי של הקמעונאי")).toBe("מועדון אשראי של הקמעונאי");
+    expect(clubName("(2=מועדון קרפור אשראי|2=מועדון אפליקציה)")).toBe("מועדון קרפור אשראי / מועדון אפליקציה");
+    expect(clubName("((2=מועדון לקוחות אשראי))&(3=תווי זיכוי מימוש|3=עיגול אגורות)")).toBe("מועדון לקוחות אשראי");
   });
 });

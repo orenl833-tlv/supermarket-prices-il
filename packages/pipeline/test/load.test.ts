@@ -112,6 +112,7 @@ describe.skipIf(!url)("database loading", () => {
       discount: null,
       minPurchase: null,
       maxUnits: null,
+      club: null,
       startsAt: day(1),
       endsAt: day(30),
     });

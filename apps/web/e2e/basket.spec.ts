@@ -195,3 +195,18 @@ test("offers deals the basket unlocks with a minimum purchase, and adds one in a
   // Compared again: milk 6.50 + bread 7 = 13.50 reaches the minimum, so the eggs cost 6.
   await expect(page.locator(".plan.best .price strong")).toContainText("19.50");
 });
+
+test("says what club membership would save, and applies club deals for members", async ({ page }) => {
+  await add(page, "חלב");
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.locator(".price strong")).toContainText("6.50");
+  await expect(best).toContainText("אם היית חבר מועדון בזולה, היית חוסך");
+  await expect(best.locator(".club-saving")).toContainText("1.50");
+
+  await page.getByText("מועדוני לקוחות").click();
+  await page.getByRole("checkbox", { name: "זולה" }).check();
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  await expect(page.locator(".plan.best .price strong")).toContainText("5.00");
+  await expect(page.locator(".plan.best .club-saving")).toHaveCount(0);
+});

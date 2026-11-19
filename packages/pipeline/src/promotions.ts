@@ -14,7 +14,8 @@ import { stripZeros } from "./filename.js";
  * minPurchase; the engine applies them only when the rest of the basket in
  * that store reaches it. A per-customer limit ("עד 3 יח'", MaxQty) is kept
  * for unit-price deals.
- * Left out on purpose: coupons, club-only deals, deals with hours or days,
+ * Club deals keep the club's name (see clubName).
+ * Left out on purpose: coupons, deals limited to some hours or days,
  * weighted items, and deals across different products.
  */
 export interface PromoRow {
@@ -30,6 +31,8 @@ export interface PromoRow {
   minPurchase: number | null;
   /** At most this many units at the promotion price (unit-price deals). */
   maxUnits: number | null;
+  /** Only for members of this club ("מועדון קרפור אשראי"); null for every customer. */
+  club: string | null;
   startsAt: Date;
   endsAt: Date;
 }
@@ -125,7 +128,7 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   if (!promotionId || !startsAt || !endsAt) return "incomplete";
   if (endsAt < fileTime) return "ended";
   if (text(p.additionaliscoupon) === "1" || /קופ/.test(description)) return "coupon";
-  if (!(text(p.clubid) ?? "0").startsWith("0")) return "club";
+  const club = clubName(text(p.clubid));
   if (limitedHours(text(p.promotionstarthour), text(p.promotionendhour)) || limitedDays(text(p.promotiondays))) {
     return "limited hours";
   }
@@ -152,7 +155,7 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   const redemptions = num(text(p.redemptionlimit));
   const limit = redemptions && redemptions > 0 ? redemptions : null;
 
-  const base = { promotionId, description, startsAt, endsAt, minPurchase };
+  const base = { promotionId, description, startsAt, endsAt, minPurchase, club };
   const rows: PromoRow[] = [];
   if (groups.length === 1) {
     for (const i of groups[0]!) {
@@ -207,6 +210,23 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   // The same item can appear twice in a group; keep one row per item.
   const unique = [...new Map(rows.map((r) => [r.itemCode, r])).values()];
   return unique.length > 0 ? unique : "unsupported";
+}
+
+/**
+ * The club a deal is for, or null when it is for every customer. Chains write
+ * ClubID differently:
+ *   "0" / "0 - כלל הלקוחות"                        -> null (everyone)
+ *   "2 - מועדון אשראי של הקמעונאי"                 -> "מועדון אשראי של הקמעונאי"
+ *   "(2=מועדון קרפור אשראי|2=מועדון אפליקציה)"     -> "מועדון קרפור אשראי / מועדון אפליקציה"
+ *   "((2=מועדון לקוחות אשראי))&(3=תווי זיכוי...)" -> "מועדון לקוחות אשראי" (the payment part is dropped)
+ */
+export function clubName(clubId: string | null): string | null {
+  const id = (clubId ?? "").trim();
+  if (id === "" || /^0(\D|$)/.test(id)) return null;
+  const firstGroup = id.split("&")[0]!;
+  const names = [...firstGroup.matchAll(/\d+\s*=\s*([^|()]+)/g)].map((m) => m[1]!.trim().replace(/\s+/g, " "));
+  if (names.length > 0) return [...new Set(names)].join(" / ");
+  return id.replace(/^\d+\s*-\s*/, "").trim() || "מועדון";
 }
 
 /**

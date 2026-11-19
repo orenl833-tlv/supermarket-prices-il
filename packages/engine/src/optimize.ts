@@ -49,6 +49,8 @@ export interface OptimizeInput {
    * one, and may buy a few more units when they cost nothing (see choosePromo).
    */
   promotions?: PromotionTable;
+  /** Chains whose club the customer belongs to: their club deals apply. */
+  memberChains?: ReadonlySet<string>;
 }
 
 export type PromotionTable = ReadonlyMap<number, ReadonlyMap<number, readonly Promotion[]>>;
@@ -98,7 +100,9 @@ export function optimize(input: OptimizeInput): Plan[] {
 
 /** Price one combination of stores, or null if it is not a valid plan. */
 function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
-  const { basket, prices, costModel, penalties, missingTripCost, substitutes, promotions } = input;
+  const { basket, prices, costModel, penalties, missingTripCost, substitutes, promotions, memberChains } = input;
+  // The promotions a customer actually gets in a store: club deals only where they are a member.
+  const usable = (store: Store) => usablePromotions(promotions?.get(store.id), memberChains?.has(store.chain) ?? false);
   const linesByStore = new Map<number, PlanLine[]>(combo.map((s) => [s.id, []]));
   const missing: MissingItem[] = [];
   let substitutionCost = 0;
@@ -113,7 +117,7 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
       let option: { line: PlanLine; penalty: number } | null = null;
       if (price !== undefined) {
         // Deals with a minimum purchase wait for the second pass, when the store's other lines are known.
-        const unconditional = (promotions?.get(store.id)?.get(item.productId) ?? []).filter((p) => !p.minPurchase);
+        const unconditional = (usable(store)?.get(item.productId) ?? []).filter((p) => !p.minPurchase);
         option = { line: exactLine(item, price, unconditional), penalty: 0 };
       }
       // A substitute is an option where the exact product is missing, or anywhere
@@ -154,12 +158,17 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
   }
 
   if (promotions) {
-    for (const store of combo) applyMinimumPurchaseDeals(linesByStore.get(store.id)!, basket, promotions.get(store.id));
+    for (const store of combo) applyMinimumPurchaseDeals(linesByStore.get(store.id)!, basket, usable(store));
   }
 
   const stops: PlanStop[] = combo.map((store) => {
     const lines = linesByStore.get(store.id)!;
-    return { store, lines, subtotal: money(sum(lines.map((l) => l.lineTotal))) };
+    const stop: PlanStop = { store, lines, subtotal: money(sum(lines.map((l) => l.lineTotal))) };
+    if (!memberChains?.has(store.chain)) {
+      const saving = clubSaving(lines, basket, promotions?.get(store.id));
+      if (saving > 0) stop.clubSaving = saving;
+    }
+    return stop;
   });
 
   // A stop where nothing is bought is pointless: the smaller plan already covers it.
@@ -181,6 +190,40 @@ function evaluate(combo: Store[], input: OptimizeInput): Plan | null {
     substitutionCost,
     score: money(itemsCost + fixedCost + penaltyCost + substitutionCost),
   };
+}
+
+/** A store's promotions without the club deals, unless the customer is a member. */
+function usablePromotions(
+  storePromotions: ReadonlyMap<number, readonly Promotion[]> | undefined,
+  member: boolean,
+): ReadonlyMap<number, readonly Promotion[]> | undefined {
+  if (!storePromotions || member) return storePromotions;
+  const out = new Map<number, readonly Promotion[]>();
+  for (const [productId, promos] of storePromotions) out.set(productId, promos.filter((p) => !p.club));
+  return out;
+}
+
+/**
+ * What a non-member would save at this stop by joining the chain's club:
+ * each exact-product line priced again with the club deals (those without a
+ * minimum purchase), compared with its price now. Shown, not charged.
+ */
+function clubSaving(
+  lines: PlanLine[],
+  basket: BasketItem[],
+  storePromotions: ReadonlyMap<number, readonly Promotion[]> | undefined,
+): number {
+  if (!storePromotions) return 0;
+  let saving = 0;
+  for (const line of lines) {
+    if (line.substituteFor !== undefined) continue;
+    const all = (storePromotions.get(line.productId) ?? []).filter((p) => !p.minPurchase);
+    const item = basket.find((b) => b.productId === line.productId);
+    if (!item || !all.some((p) => p.club)) continue;
+    const asMember = exactLine(item, line.unitPrice, all);
+    saving += Math.max(0, line.lineTotal - asMember.lineTotal);
+  }
+  return money(saving);
 }
 
 /**

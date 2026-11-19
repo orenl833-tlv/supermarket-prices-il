@@ -303,10 +303,11 @@ export async function activePromotions(
     discount: number | null;
     min_purchase: number | null;
     max_units: number | null;
+    club_name: string | null;
   }>(
     `SELECT store_id, product_id, description, kind, quantity, get_quantity,
             price::float AS price, discount::float AS discount,
-            min_purchase::float AS min_purchase, max_units
+            min_purchase::float AS min_purchase, max_units, club_name
      FROM store_promotions
      WHERE store_id = ANY($1::int[]) AND product_id = ANY($2::int[])
        AND starts_at <= $3 AND ends_at > $3`,
@@ -332,9 +333,11 @@ function toPromotion(r: {
   discount: number | null;
   min_purchase: number | null;
   max_units: number | null;
+  club_name: string | null;
 }): Promotion | null {
   const common = {
     description: r.description,
+    ...(r.club_name ? { club: r.club_name } : {}),
     ...(r.min_purchase ? { minPurchase: r.min_purchase } : {}),
     ...(r.max_units ? { maxUnits: r.max_units } : {}),
   };
@@ -383,7 +386,7 @@ export async function unlockableDeals(
      JOIN products p ON p.id = sp.product_id
      JOIN price_changes pc ON pc.store_id = sp.store_id AND pc.product_id = sp.product_id AND pc.valid_to IS NULL
      WHERE sp.store_id = ANY($1::int[]) AND sp.product_id <> ALL($2::int[])
-       AND sp.kind = 'unitPrice' AND sp.min_purchase > 0 AND sp.price < pc.price
+       AND sp.kind = 'unitPrice' AND sp.min_purchase > 0 AND sp.price < pc.price AND sp.club_name IS NULL
        AND sp.starts_at <= $3 AND sp.ends_at > $3
      ORDER BY sp.store_id, 1 - sp.price / pc.price DESC`,
     [storeIds, basketProductIds, now],

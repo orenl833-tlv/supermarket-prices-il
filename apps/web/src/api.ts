@@ -54,6 +54,8 @@ export interface Plan {
       unlock?: { minPurchase: number; missing: number; promotion: string };
     }>;
     subtotal: number;
+    /** What club membership at this chain would have saved on this stop. */
+    clubSaving?: number;
     /** Deals on other products that this stop's total unlocks ("מעל 100"). */
     unlockedDeals?: Array<{
       productId: number;
@@ -86,6 +88,7 @@ export interface CompareRequest {
   radiusKm: number;
   maxStores: 1 | 2;
   extraStopCost: number;
+  memberChains: string[];
 }
 
 export interface SearchResult {

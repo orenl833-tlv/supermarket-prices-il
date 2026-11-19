@@ -65,6 +65,12 @@ export async function seed(pool: pg.Pool): Promise<void> {
      VALUES ($1, $2, 'E2E1', '2+1 לחם אחיד', 'buyGet', 2, 1, 1, now() - interval '1 day', now() + interval '30 days')`,
     [a.storeId, aIds.get(BREAD.itemCode)!],
   );
+  // A club deal: milk at 5 instead of 6.50 for members of "זולה"'s club.
+  await pool.query(
+    `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, price, club_name, starts_at, ends_at)
+     VALUES ($1, $2, 'E2E3', 'חלב ב-5 לחברי מועדון', 'unitPrice', 5, 'מועדון זולה', now() - interval '1 day', now() + interval '30 days')`,
+    [a.storeId, aIds.get(MILK.itemCode)!],
+  );
   // A minimum-purchase deal: eggs at 6 instead of 12 when spending over 10 on other products.
   await pool.query(
     `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, price, min_purchase, starts_at, ends_at)

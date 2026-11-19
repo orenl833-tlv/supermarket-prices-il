@@ -28,6 +28,8 @@ interface CompareBody {
   radiusKm: number;
   maxStores: 1 | 2;
   extraStopCost: number;
+  /** Chains whose club the customer belongs to (their club deals apply). */
+  memberChains: string[];
 }
 
 export function buildServer(
@@ -170,12 +172,13 @@ export function buildServer(
             radiusKm: { type: "number", minimum: 0.2, maximum: 5, default: 2 },
             maxStores: { enum: [1, 2], default: 1 },
             extraStopCost: { type: "number", minimum: 0, maximum: 200, default: 15 },
+            memberChains: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 }, default: [] },
           },
         },
       },
     },
     async (req) => {
-      const { items, lat, lon, radiusKm, maxStores, extraStopCost } = req.body;
+      const { items, lat, lon, radiusKm, maxStores, extraStopCost, memberChains } = req.body;
       const stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
       const productIds = items.map((i) => i.productId);
       const prices = await currentPrices(db, stores.map((s) => s.id), productIds);
@@ -195,6 +198,7 @@ export function buildServer(
         onePerChain: true,
         substitutes,
         promotions,
+        memberChains: new Set(memberChains),
       });
 
       // Items no nearby store sells, not even as a substitute: shown separately,
