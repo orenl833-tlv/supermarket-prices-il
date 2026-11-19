@@ -21,7 +21,7 @@ Under Israel's food price transparency law, large supermarket chains publish the
 - Sends the chosen plan as a shopping list grouped by store.
 - Applies promotions: takes free units (2+1 when you want 2 gives 3 for the price of 2) and suggests deals that cost a little more.
 - Flags a chain whose prices are out of date, and shows per chain how many branches and products were loaded and when.
-- Runs unattended: a daily update with hourly retries through the morning, failure alerts as GitHub issues, and no AI calls or paid services.
+- Runs unattended: a daily update started on time by an external scheduler, failure alerts as GitHub issues, and no AI calls or paid services.
 
 ## Status
 
@@ -142,7 +142,7 @@ The `Daily ingest` workflow runs every morning (and on demand from the Actions t
 
 The daily run costs nothing and makes no AI calls: classification is rule-based. It is built to need no attention:
 
-- **Hourly attempts through the morning (05:40–12:40 Israel winter time):** GitHub sometimes starts scheduled runs hours late, and a portal can be down. The first run to start loads the new files; later ones skip everything in about a minute.
+- **On time:** an external scheduler (cron-job.org) starts both runs at 05:45 and 05:50 through the GitHub API, because GitHub starts scheduled runs hours late on busy days. A GitHub schedule remains as a backup; runs are idempotent, so a duplicate finishes in about a minute.
 - **Alerts:** a failed run opens a "Daily ingest failing" issue (GitHub emails the owner), and the next good run closes it.
 - **Schedule kept alive:** GitHub turns off scheduled workflows after 60 days without commits; each run re-enables its own workflow.
 - **Warm site:** each run calls the site, so the free Render instance is awake for the morning's first visitors.
