@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { compare, deliveryTerms, productsByIds, status, type BasketEntry, type ChainStatus, type DeliveryTerms, type CompareResult, type Product } from "./api";
 import { Basket } from "./components/Basket";
+import { ClubToggle } from "./components/ClubToggle";
 import { Deals } from "./components/Deals";
 import { ProductSearch } from "./components/ProductSearch";
 import { Results } from "./components/Results";
@@ -113,6 +114,11 @@ export function App() {
 
   return (
     <div className="page">
+      <ClubToggle
+        chains={freshness.map((f) => f.chain)}
+        members={settings.memberChains ?? []}
+        onChange={(memberChains) => setSettings({ ...settings, memberChains })}
+      />
       <header className="top">
         <h1>הסל הזול</h1>
         <p>איפה הכי זול לקנות את כל הרשימה, בסופרים שקרובים אליכם בתל אביב.</p>
@@ -125,7 +131,6 @@ export function App() {
         <Settings
           value={settings}
           onChange={setSettings}
-          chains={freshness.map((f) => f.chain)}
           delivery={delivery}
         />
 
