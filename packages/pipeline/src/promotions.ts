@@ -126,7 +126,9 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   if (endsAt < fileTime) return "ended";
   if (text(p.additionaliscoupon) === "1" || /קופ/.test(description)) return "coupon";
   if (!(text(p.clubid) ?? "0").startsWith("0")) return "club";
-  if (text(p.promotionstarthour) || text(p.promotionendhour) || text(p.promotiondays)) return "limited hours";
+  if (limitedHours(text(p.promotionstarthour), text(p.promotionendhour)) || limitedDays(text(p.promotiondays))) {
+    return "limited hours";
+  }
 
   const groupNodes: Node[] = [];
   collect(p, "group", groupNodes);
@@ -205,6 +207,25 @@ export function interpretPromotion(p: Node, fileTime: Date): PromoRow[] | string
   // The same item can appear twice in a group; keep one row per item.
   const unique = [...new Map(rows.map((r) => [r.itemCode, r])).values()];
   return unique.length > 0 ? unique : "unsupported";
+}
+
+/**
+ * A deal limited to part of the day. Carrefour fills the fields with the whole
+ * day ("00:01:00.000" to "23:59:00.000"), which is no limit at all.
+ */
+export function limitedHours(start: string | null, end: string | null): boolean {
+  const minutes = (t: string | null, fallback: number) => {
+    const m = t ? /^(\d{1,2}):(\d{2})/.exec(t) : null;
+    return m ? Number(m[1]) * 60 + Number(m[2]) : fallback;
+  };
+  return minutes(start, 0) > 1 || minutes(end, 24 * 60) < 23 * 60 + 58;
+}
+
+/** A deal limited to some days of the week; all seven days ("1234567") is no limit. */
+function limitedDays(days: string | null): boolean {
+  if (!days) return false;
+  const digits = new Set(days.replace(/\D/g, ""));
+  return digits.size > 0 && digits.size < 7;
 }
 
 function toRawItem(n: Node): RawItem | null {

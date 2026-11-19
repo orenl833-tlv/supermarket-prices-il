@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parsePromoFull } from "../src/promotions.js";
+import { limitedHours, parsePromoFull } from "../src/promotions.js";
 
 // Five real promotions from a Shufersal PromoFull file (branch 1, 16.11.2026).
 const xml = readFileSync(new URL("./fixtures/promofull-shufersal-sample.xml", import.meta.url), "utf8");
@@ -39,5 +39,17 @@ describe("parsePromoFull", () => {
 
   it("drops promotions that ended before the file was published", () => {
     expect(parsePromoFull(xml, new Date("2027-01-01T00:00:00Z")).rows).toEqual([]);
+  });
+});
+
+describe("limitedHours", () => {
+  it("treats the whole day (Carrefour's 00:01-23:59) and empty fields as no limit", () => {
+    expect(limitedHours("00:01:00.000", "23:59:00.000")).toBe(false);
+    expect(limitedHours(null, null)).toBe(false);
+  });
+
+  it("treats part of the day as a limit", () => {
+    expect(limitedHours("08:00", "12:00")).toBe(true);
+    expect(limitedHours(null, "20:00")).toBe(true);
   });
 });
