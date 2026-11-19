@@ -200,7 +200,10 @@ async function ingestPromotions(
     );
     return n;
   });
-  console.log(`${chain.name} #${storeCode}: ${stored} promotion rows, ${skipped} promotions left out`);
+  // Reasons in the log show at a glance when a chain's file differs ({"coupon": 12, "club": 3}).
+  console.log(
+    `${chain.name} #${storeCode}: ${stored} promotion rows, ${skipped} promotions left out ${JSON.stringify(parsed.skipped)}`,
+  );
 }
 
 /**
