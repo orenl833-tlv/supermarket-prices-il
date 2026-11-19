@@ -72,6 +72,11 @@ export interface PlanStop {
   store: Store;
   lines: PlanLine[];
   subtotal: number;
+  /**
+   * How much less this stop would cost with the chain's club deals, when the
+   * customer is not a member of that chain's club (not in the total).
+   */
+  clubSaving?: number;
 }
 
 export interface MissingItem {

@@ -105,6 +105,14 @@ function PlanCard({
         </p>
       ))}
 
+      {plan.stops
+        .filter((s) => s.clubSaving)
+        .map((s) => (
+          <p key={s.store.id} className="note small club-saving">
+            אם היית חבר מועדון ב{s.store.chain}, היית חוסך {money(s.clubSaving!)} בקנייה הזו.
+          </p>
+        ))}
+
       {substitutes.length > 0 && (
         <p className="note small">
           {substitutes.length === 1 ? "עם תחליף קרוב ל" : "עם תחליפים קרובים ל: "}

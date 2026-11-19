@@ -602,3 +602,11 @@ footer {
 .deal-list .badge {
   margin-inline-start: 6px;
 }
+
+.clubs {
+  margin-top: 12px;
+}
+.clubs summary {
+  cursor: pointer;
+  font-weight: 600;
+}

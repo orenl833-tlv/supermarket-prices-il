@@ -12,6 +12,8 @@ export interface SearchSettings {
   radiusKm: number;
   maxStores: 1 | 2;
   extraStopCost: number;
+  /** Chains whose club the user belongs to; saved on the device with the other settings. */
+  memberChains?: string[];
 }
 
 export const PLACES: Location[] = [
@@ -27,9 +29,12 @@ export const PLACES: Location[] = [
 export function Settings({
   value,
   onChange,
+  chains = [],
 }: {
   value: SearchSettings;
   onChange: (next: SearchSettings) => void;
+  /** All chains, for the club checkboxes. */
+  chains?: string[];
 }) {
   const set = (patch: Partial<SearchSettings>) => onChange({ ...value, ...patch });
   const isPreset = PLACES.some((p) => p.label === value.location.label);
@@ -181,6 +186,36 @@ export function Settings({
             onChange={(e) => set({ extraStopCost: Number(e.target.value) })}
           />
         </>
+      )}
+      {chains.length > 0 && (
+        <details className="clubs">
+          <summary>
+            מועדוני לקוחות
+            {(value.memberChains?.length ?? 0) > 0 && <span className="muted small"> ({value.memberChains!.join(", ")})</span>}
+          </summary>
+          <p className="muted small">מבצעי מועדון נכנסים לחישוב רק ברשתות שמסומנות כאן.</p>
+          <div className="row gap wrap">
+            {chains.map((chain) => {
+              const on = value.memberChains?.includes(chain) ?? false;
+              return (
+                <label key={chain} className="check inline">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() =>
+                      set({
+                        memberChains: on
+                          ? (value.memberChains ?? []).filter((c) => c !== chain)
+                          : [...(value.memberChains ?? []), chain],
+                      })
+                    }
+                  />
+                  {chain}
+                </label>
+              );
+            })}
+          </div>
+        </details>
       )}
     </section>
   );

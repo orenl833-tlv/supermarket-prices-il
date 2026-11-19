@@ -352,3 +352,38 @@ describe("optimize with minimum-purchase deals", () => {
     expect(line.unlock).toEqual({ minPurchase: 100, missing: 10, promotion: "ביסלי ב-50% מעל 100" });
   });
 });
+
+describe("optimize with club deals", () => {
+  // Hummus 10 at chain "c" (store 1); club deal: 6 for members of the chain's club.
+  const stores = [store(1)];
+  const prices = table({ 1: { 40: 10 } });
+  const club = { kind: "unitPrice" as const, price: 6, club: "מועדון אפליקציה", description: "חומוס ב-6 לחברי מועדון" };
+  const promotions = new Map([[1, new Map([[40, [club]]])]]);
+  const run = (memberChains?: Set<string>) => {
+    const basket = [item(40, "normal", 2)];
+    const [best] = optimize({
+      basket,
+      stores,
+      prices,
+      promotions,
+      memberChains,
+      costModel: walkingCost({ extraStopCost: 15 }),
+      maxStores: 1,
+      penalties: missingPenalties(basket, stores, prices),
+      missingTripCost: 0,
+    });
+    return best!.stops[0]!;
+  };
+
+  it("does not give club prices to non-members, but says what membership would save", () => {
+    const stop = run();
+    expect(stop.subtotal).toBe(20);
+    expect(stop.clubSaving).toBe(8); // 2 × (10 - 6)
+  });
+
+  it("gives club prices to members, with nothing left to save", () => {
+    const stop = run(new Set(["c"]));
+    expect(stop.subtotal).toBe(12);
+    expect(stop.clubSaving).toBeUndefined();
+  });
+});

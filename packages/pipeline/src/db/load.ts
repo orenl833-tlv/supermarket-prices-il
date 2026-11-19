@@ -176,13 +176,13 @@ export async function replacePromotions(
   const { rowCount } = await db.query(
     `INSERT INTO store_promotions
        (store_id, product_id, promotion_id, description, kind, quantity, get_quantity, price, discount,
-        min_purchase, max_units, starts_at, ends_at)
+        min_purchase, max_units, club_name, starts_at, ends_at)
      SELECT $1, cp.product_id, r.promotion_id, r.description, r.kind, r.quantity, r.get_quantity, r.price, r.discount,
-            r.min_purchase, r.max_units, r.starts_at, r.ends_at
+            r.min_purchase, r.max_units, r.club_name, r.starts_at, r.ends_at
      FROM unnest($3::text[], $4::text[], $5::text[], $6::text[], $7::int[], $8::int[], $9::numeric[],
-                 $10::numeric[], $11::numeric[], $12::int[], $13::timestamptz[], $14::timestamptz[])
+                 $10::numeric[], $11::numeric[], $12::int[], $13::text[], $14::timestamptz[], $15::timestamptz[])
           AS r(item_code, promotion_id, description, kind, quantity, get_quantity, price, discount,
-               min_purchase, max_units, starts_at, ends_at)
+               min_purchase, max_units, club_name, starts_at, ends_at)
      JOIN chain_products cp ON cp.chain_id = $2 AND cp.item_code = r.item_code
      ON CONFLICT DO NOTHING`,
     [
@@ -198,6 +198,7 @@ export async function replacePromotions(
       rows.map((r) => r.discount),
       rows.map((r) => r.minPurchase),
       rows.map((r) => r.maxUnits),
+      rows.map((r) => r.club),
       rows.map((r) => r.startsAt),
       rows.map((r) => r.endsAt),
     ],

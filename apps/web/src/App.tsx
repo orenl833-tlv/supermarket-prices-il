@@ -91,6 +91,7 @@ export function App() {
           radiusKm: settings.radiusKm,
           maxStores: settings.maxStores,
           extraStopCost: settings.extraStopCost,
+          memberChains: settings.memberChains ?? [],
         }),
       );
     } catch {
@@ -117,7 +118,7 @@ export function App() {
       <main>
         <ProductSearch onAdd={add} inBasket={inBasket} />
         <Basket entries={basket} onChange={change} onRemove={remove} onClear={() => setBasket([])} />
-        <Settings value={settings} onChange={setSettings} />
+        <Settings value={settings} onChange={setSettings} chains={freshness.map((f) => f.chain)} />
 
         {!online && (
           <p className="warn" role="status">

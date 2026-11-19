@@ -24,6 +24,11 @@ export type Promotion = (
   minPurchase?: number;
   /** At most this many units at the deal price per customer; the rest at the regular price. */
   maxUnits?: number;
+  /**
+   * Only for members of the chain's club ("מועדון קרפור אשראי"). optimize()
+   * applies it only for chains listed in memberChains.
+   */
+  club?: string;
 };
 
 /**
