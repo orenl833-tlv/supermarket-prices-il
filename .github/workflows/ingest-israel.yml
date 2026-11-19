@@ -8,6 +8,9 @@ name: Daily ingest (Israel)
 # If the computer is off, the run waits in the queue (up to 24 hours) and
 # starts when it comes back; until then the site flags those two chains'
 # prices as out of date. Steps avoid shell syntax so they work in PowerShell.
+#
+# Started at 05:50 Israel time by the external scheduler (see ingest.yml);
+# the schedule below is a backup.
 on:
   schedule:
     - cron: "50 3 * * *"
