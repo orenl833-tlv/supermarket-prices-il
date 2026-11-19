@@ -1,0 +1,28 @@
+name: Delivery terms reminder
+
+# Delivery fees and minimum orders are not in the chains' price files, so they
+# are kept by hand in packages/api/src/delivery.ts. Once a month this opens an
+# issue (GitHub emails the owner) to check them against the chains' sites.
+on:
+  schedule:
+    - cron: "17 7 1 * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Open a reminder issue
+        run: |
+          gh issue create -R "$GITHUB_REPOSITORY" \
+            --title "Check delivery fees ($(date +%Y-%m))" \
+            --body "Monthly check of the home-delivery terms in \`packages/api/src/delivery.ts\` (fee, minimum order, free delivery threshold):
+          - Shufersal Online: https://www.shufersal.co.il/online/
+          - Rami Levy: https://www.rami-levy.co.il/
+
+          Update \`fee\`, \`minimumOrder\`, \`freeAbove\` and \`checkedAt\` if anything changed, then close this issue."

@@ -78,6 +78,15 @@ export async function seed(pool: pg.Pool): Promise<void> {
     [a.storeId, aIds.get(EGGS_A.itemCode)!],
   );
 
+  // The online store of "יקרה", for delivery: no address, its own prices.
+  const online = await upsertStores(pool, b.chainId, [{ storeCode: "99", name: "יקרה אונליין", address: "www", cityCode: null }]);
+  const onlineId = online.get("99")!;
+  await pool.query("UPDATE stores SET online = true WHERE id = $1", [onlineId]);
+  await applyPrices(pool, onlineId, day, [
+    { productId: bIds.get(MILK.itemCode)!, price: 7 },
+    { productId: bIds.get(BREAD.itemCode)!, price: 8 },
+  ]);
+
   await classifyProducts(pool);
 
   // Freshness: chain "זולה" updated an hour ago, chain "יקרה" three days ago.

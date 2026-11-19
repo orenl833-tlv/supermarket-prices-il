@@ -244,7 +244,7 @@ export async function storesNear(
   const { rows } = await db.query(
     `SELECT s.id, s.name, s.address, s.lat, s.lon, c.name AS chain
      FROM stores s JOIN chains c ON c.id = s.chain_id
-     WHERE s.lat BETWEEN $1 AND $2 AND s.lon BETWEEN $3 AND $4`,
+     WHERE s.lat BETWEEN $1 AND $2 AND s.lon BETWEEN $3 AND $4 AND NOT s.online`,
     [point.lat - dLat, point.lat + dLat, point.lon - dLon, point.lon + dLon],
   );
   return rows
@@ -490,7 +490,7 @@ export async function freshness(db: pg.Pool): Promise<ChainStatus[]> {
     `SELECT c.name AS chain,
        (SELECT max(r.file_time) FROM ingest_runs r JOIN stores s ON s.id = r.store_id
         WHERE s.chain_id = c.id AND r.status = 'ok') AS updated_at,
-       (SELECT count(*) FROM stores s WHERE s.chain_id = c.id)::int AS branches,
+       (SELECT count(*) FROM stores s WHERE s.chain_id = c.id AND NOT s.online)::int AS branches,
        (SELECT count(DISTINCT pc.product_id) FROM price_changes pc JOIN stores s ON s.id = pc.store_id
         WHERE s.chain_id = c.id AND pc.valid_to IS NULL)::int AS products
      FROM chains c

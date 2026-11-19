@@ -312,6 +312,47 @@ describe.skipIf(!url)("API", () => {
       { chain: "יקרה", updatedAt: null, branches: 1, products: 4 },
     ]);
   });
+
+  it("compares home delivery from online stores, with the fee and the minimum order", async () => {
+    const chain = (await pool.query("SELECT id FROM chains WHERE name = 'יקרה'")).rows[0].id;
+    const ids = await upsertStores(pool, chain, [{ storeCode: "99", name: "יקרה אונליין", address: "www", cityCode: null }]);
+    const online = ids.get("99")!;
+    await pool.query("UPDATE stores SET online = true WHERE id = $1", [online]);
+    const milk = (await search("חלב שומן"))[0].id;
+    await pool.query(
+      `INSERT INTO price_changes (store_id, product_id, price, valid_from) VALUES ($1, $2, 8, now())`,
+      [online, milk],
+    );
+    const delivery = buildServer(pool, {
+      lookup: async () => null,
+      reverse: async () => null,
+      deliveryTerms: [{ chain: "יקרה", fee: 20, minimumOrder: 15, checkedAt: "2026-11-19", source: "test" }],
+    });
+    const compare = async (quantity: number) =>
+      (
+        await delivery.inject({
+          method: "POST",
+          url: "/api/compare",
+          payload: { ...center, mode: "delivery", items: [{ productId: milk, quantity }] },
+        })
+      ).json().plans;
+    try {
+      expect((await delivery.inject({ url: "/api/delivery" })).json().terms).toEqual([
+        { chain: "יקרה", fee: 20, minimumOrder: 15, freeAbove: null, checkedAt: "2026-11-19" },
+      ]);
+      const [plan] = await compare(2); // 2 × 8 = 16, above the minimum of 15
+      expect(plan.stops[0].store.name).toBe("יקרה אונליין");
+      expect(plan).toMatchObject({ itemsCost: 16, fixedCost: 20, score: 36 });
+      expect(await compare(1)).toEqual([]); // 8 is below the minimum order
+      // The walking comparison never offers the online store.
+      const walk = (
+        await app.inject({ method: "POST", url: "/api/compare", payload: { ...center, items: [{ productId: milk, quantity: 1 }] } })
+      ).json();
+      expect(walk.plans.every((p: { stops: Array<{ store: { name: string } }> }) => p.stops[0]!.store.name !== "יקרה אונליין")).toBe(true);
+    } finally {
+      await delivery.close();
+    }
+  });
 });
 
 describe("serving the web app", () => {

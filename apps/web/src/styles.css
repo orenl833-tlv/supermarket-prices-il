@@ -610,3 +610,12 @@ footer {
   cursor: pointer;
   font-weight: 600;
 }
+
+.segmented.mode {
+  margin-bottom: 8px;
+  width: fit-content;
+}
+.delivery-terms {
+  margin: 4px 0 8px;
+  padding-inline-start: 18px;
+}

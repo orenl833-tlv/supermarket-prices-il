@@ -25,6 +25,13 @@ export default defineConfig({
     cwd: "../..",
     url: `http://localhost:${PORT}/api/health`,
     reuseExistingServer: !process.env.CI,
-    env: { PORT: String(PORT), DATABASE_URL: process.env.DATABASE_URL ?? "" },
+    env: {
+      PORT: String(PORT),
+      DATABASE_URL: process.env.DATABASE_URL ?? "",
+      // Delivery terms for the seeded online store of "יקרה" (see e2e/seed.ts).
+      DELIVERY_TERMS_JSON: JSON.stringify([
+        { chain: "יקרה", fee: 20, minimumOrder: 10, checkedAt: "2026-11-19", source: "e2e" },
+      ]),
+    },
   },
 });

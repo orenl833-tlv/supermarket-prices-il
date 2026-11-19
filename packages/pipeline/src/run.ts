@@ -50,11 +50,15 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
     let storeIds: Map<string, number>;
     try {
       const storesFile = await chain.latestStoresFile();
+      // The online store has no city; it is kept for delivery comparisons.
+      const extra = [...(chain.extraStoreCodes ?? []), ...(chain.onlineStoreCode ? [chain.onlineStoreCode] : [])];
       const stores = parseStores(decodeFile(await chain.download(storesFile))).filter((s) =>
-        isInArea(s, AREA, chain.extraStoreCodes),
+        isInArea(s, AREA, extra),
       );
       const chainId = await upsertChain(pool, chain.code, chain.name);
       storeIds = await upsertStores(pool, chainId, stores);
+      const onlineId = chain.onlineStoreCode ? storeIds.get(chain.onlineStoreCode) : undefined;
+      if (onlineId) await pool.query("UPDATE stores SET online = true WHERE id = $1", [onlineId]);
       console.log(`${chain.name}: ${stores.length} branches in target cities`);
 
       for (const [storeCode, storeId] of storeIds) {

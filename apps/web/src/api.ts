@@ -89,6 +89,7 @@ export interface CompareRequest {
   maxStores: 1 | 2;
   extraStopCost: number;
   memberChains: string[];
+  mode: "store" | "delivery";
 }
 
 export interface SearchResult {
@@ -164,4 +165,19 @@ export async function deals(): Promise<Deal[]> {
   const res = await fetch("/api/deals");
   if (!res.ok) return [];
   return (await res.json()).deals;
+}
+
+export interface DeliveryTerms {
+  chain: string;
+  fee: number;
+  minimumOrder: number;
+  freeAbove: number | null;
+  checkedAt: string | null;
+}
+
+/** Chains whose online store can be compared for delivery; empty until their fees are entered. */
+export async function deliveryTerms(): Promise<DeliveryTerms[]> {
+  const res = await fetch("/api/delivery");
+  if (!res.ok) return [];
+  return (await res.json()).terms;
 }

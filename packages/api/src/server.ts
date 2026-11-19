@@ -1,8 +1,9 @@
-import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/engine";
+import { deliveryCost, missingPenalties, optimize, walkingCost, type BasketItem, type CostModel } from "@spil/engine";
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
 import { cachedDeals } from "./deals.js";
+import { DELIVERY_TERMS, onlineStores, usableTerms, type DeliveryTerms } from "./delivery.js";
 import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
   activePromotions,
@@ -30,15 +31,24 @@ interface CompareBody {
   extraStopCost: number;
   /** Chains whose club the customer belongs to (their club deals apply). */
   memberChains: string[];
+  /** "store": walk to nearby branches; "delivery": order from chains' online stores. */
+  mode: "store" | "delivery";
 }
 
 export function buildServer(
   db: pg.Pool,
-  opts: { logger?: boolean; webRoot?: string; lookup?: AddressLookup; reverse?: ReverseLookup } = {},
+  opts: {
+    logger?: boolean;
+    webRoot?: string;
+    lookup?: AddressLookup;
+    reverse?: ReverseLookup;
+    deliveryTerms?: DeliveryTerms[];
+  } = {},
 ): FastifyInstance {
   const app = Fastify({ logger: opts.logger ?? false });
   const geocoder = opts.lookup && opts.reverse ? null : nominatim();
   const lookup = opts.lookup ?? geocoder!.search;
+  const deliveryTerms = opts.deliveryTerms ?? DELIVERY_TERMS;
   const reverse = opts.reverse ?? geocoder!.reverse;
 
   // In production the API also serves the built web app, so the whole site is one service.
@@ -173,13 +183,25 @@ export function buildServer(
             maxStores: { enum: [1, 2], default: 1 },
             extraStopCost: { type: "number", minimum: 0, maximum: 200, default: 15 },
             memberChains: { type: "array", maxItems: 20, items: { type: "string", maxLength: 40 }, default: [] },
+            mode: { enum: ["store", "delivery"], default: "store" },
           },
         },
       },
     },
     async (req) => {
-      const { items, lat, lon, radiusKm, maxStores, extraStopCost, memberChains } = req.body;
-      const stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
+      const { items, lat, lon, radiusKm, maxStores, extraStopCost, memberChains, mode } = req.body;
+      // In store mode, nearby branches and the cost of extra stops; in delivery
+      // mode, the chains' online stores and their delivery fees and minimums.
+      let stores: Array<Awaited<ReturnType<typeof storesNear>>[number] | Awaited<ReturnType<typeof onlineStores>>["stores"][number]>;
+      let costModel: CostModel;
+      if (mode === "delivery") {
+        const online = await onlineStores(db, deliveryTerms);
+        stores = online.stores;
+        costModel = deliveryCost(online.rules);
+      } else {
+        stores = (await storesNear(db, { lat, lon }, radiusKm)).slice(0, MAX_CANDIDATE_STORES);
+        costModel = walkingCost({ extraStopCost });
+      }
       const productIds = items.map((i) => i.productId);
       const prices = await currentPrices(db, stores.map((s) => s.id), productIds);
       const [substitutes, promotions] = await Promise.all([
@@ -191,7 +213,7 @@ export function buildServer(
         basket: items,
         stores,
         prices,
-        costModel: walkingCost({ extraStopCost }),
+        costModel,
         maxStores,
         penalties: missingPenalties(items, stores, prices),
         missingTripCost: extraStopCost,
@@ -230,6 +252,17 @@ export function buildServer(
   );
 
   app.get("/api/status", async () => ({ chains: await freshness(db) }));
+
+  // Which chains can be compared for delivery, with their terms (the UI shows the toggle only if any).
+  app.get("/api/delivery", async () => ({
+    terms: usableTerms(deliveryTerms).map(({ chain, fee, minimumOrder, freeAbove, checkedAt }) => ({
+      chain,
+      fee,
+      minimumOrder,
+      freeAbove: freeAbove ?? null,
+      checkedAt,
+    })),
+  }));
 
   // "מציאות היום": products one chain sells far below the others (see deals.ts).
   const deals = cachedDeals(db);

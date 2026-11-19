@@ -9,7 +9,9 @@ if (!connectionString) throw new Error("DATABASE_URL is not set");
 const pool = new pg.Pool({ connectionString, max: 5 });
 // Serve the built web app when it exists (after `npm run build -w @spil/web`).
 const webRoot = process.env.WEB_ROOT ?? fileURLToPath(new URL("../../../apps/web/dist/", import.meta.url));
-const app = buildServer(pool, { logger: true, webRoot: existsSync(webRoot) ? webRoot : undefined });
+// Tests (E2E) can replace the delivery terms, which normally come from delivery.ts.
+const deliveryTerms = process.env.DELIVERY_TERMS_JSON ? JSON.parse(process.env.DELIVERY_TERMS_JSON) : undefined;
+const app = buildServer(pool, { logger: true, webRoot: existsSync(webRoot) ? webRoot : undefined, deliveryTerms });
 const port = Number(process.env.PORT ?? 3001);
 
 await app.listen({ port, host: "0.0.0.0" });

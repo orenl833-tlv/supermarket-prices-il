@@ -213,7 +213,9 @@ export async function geocodeStores(
   const { rows } = await pool.query<StoreRow>(
     `SELECT s.id, c.code AS chain_code, s.store_code, s.name, s.address, s.city_code, s.geocode_query
      FROM stores s JOIN chains c ON c.id = s.chain_id
-     WHERE s.geocode_precision IS DISTINCT FROM 'manual'`,
+     WHERE s.geocode_precision IS DISTINCT FROM 'manual'
+       AND NOT s.online -- online stores have no street address
+    `,
   );
 
   let updated = 0;

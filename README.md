@@ -19,13 +19,14 @@ Under Israel's food price transparency law, large supermarket chains publish the
 - Search by name or barcode, with price per litre, kg or egg; typing a category ("ביצים") offers "eggs, any brand" in one tap.
 - Shows the results on a map, shares a list as a link (WhatsApp-friendly, no accounts), installs on a phone and opens the list without a connection.
 - Sends the chosen plan as a shopping list grouped by store.
+- Compares home delivery from Shufersal and Rami Levy's online stores (their own published prices, plus the delivery fee and minimum order).
 - Applies promotions: takes free units (2+1 when you want 2 gives 3 for the price of 2) and suggests deals that cost a little more.
 - Flags a chain whose prices are out of date, and shows per chain how many branches and products were loaded and when.
 - Runs unattended: a daily update started on time by an external scheduler, failure alerts as GitHub issues, and no AI calls or paid services.
 
 ## Status
 
-Phase 1 is complete and live: Tel Aviv, regular prices and promotions, no delivery. Six chains, 106 branches. Four are loaded on GitHub's runners; Carrefour and Victory block foreign IPs and are loaded by a self-hosted runner in Israel.
+Phase 1 is complete and live: Tel Aviv, regular prices and promotions, in store or home delivery. Six chains, 106 branches. Four are loaded on GitHub's runners; Carrefour and Victory block foreign IPs and are loaded by a self-hosted runner in Israel.
 
 - [x] Repository skeleton
 - [x] Ingest pipeline: download, parse, quality checks, load (106 Tel Aviv branches, a few minutes)
