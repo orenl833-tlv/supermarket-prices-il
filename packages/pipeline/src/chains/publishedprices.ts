@@ -15,6 +15,7 @@ export function publishedPricesChain(opts: {
   name: string;
   username: string;
   extraStoreCodes?: string[];
+  onlineStoreCode?: string;
 }): ChainSource {
   let session: Session | null = null;
   const getSession = async () => (session ??= await login(opts.username));
@@ -30,6 +31,7 @@ export function publishedPricesChain(opts: {
     code: opts.code,
     name: opts.name,
     extraStoreCodes: opts.extraStoreCodes,
+    onlineStoreCode: opts.onlineStoreCode,
 
     async latestStoresFile() {
       const file = newest(await (await getSession()).list(`Stores${opts.code}`));
@@ -128,6 +130,7 @@ export const ramiLevy = publishedPricesChain({
   code: "7290058140886",
   name: "רמי לוי",
   username: "RamiLevi",
+  onlineStoreCode: "39", // "מרלוג אינטרנט", https://www.rami-levy.co.il
 });
 
 /** Dor Alon: AM:PM city stores, plus Alonit mini-markets at gas stations. */

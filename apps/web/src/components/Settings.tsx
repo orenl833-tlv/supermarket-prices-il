@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { geocodeAddress, reverseGeocode } from "../api";
+import { geocodeAddress, reverseGeocode, type DeliveryTerms } from "../api";
 import { distance } from "../format";
 export interface Location {
   label: string;
@@ -14,6 +14,8 @@ export interface SearchSettings {
   extraStopCost: number;
   /** Chains whose club the user belongs to; saved on the device with the other settings. */
   memberChains?: string[];
+  /** Walk to nearby branches, or order home delivery from online stores. */
+  mode?: "store" | "delivery";
 }
 
 export const PLACES: Location[] = [
@@ -30,12 +32,16 @@ export function Settings({
   value,
   onChange,
   chains = [],
+  delivery = [],
 }: {
   value: SearchSettings;
   onChange: (next: SearchSettings) => void;
   /** All chains, for the club checkboxes. */
   chains?: string[];
+  /** Chains that can be compared for delivery; the toggle shows only when there are some. */
+  delivery?: DeliveryTerms[];
 }) {
+  const mode = delivery.length > 0 ? (value.mode ?? "store") : "store";
   const set = (patch: Partial<SearchSettings>) => onChange({ ...value, ...patch });
   const isPreset = PLACES.some((p) => p.label === value.location.label);
 
@@ -99,6 +105,32 @@ export function Settings({
     <section className="card">
       <h2 className="h2">איפה ואיך קונים</h2>
 
+      {delivery.length > 0 && (
+        <div className="segmented mode" role="radiogroup" aria-label="איך קונים">
+          {(
+            [
+              ["store", "קנייה בחנות"],
+              ["delivery", "משלוח הביתה"],
+            ] as const
+          ).map(([m, label]) => (
+            <button key={m} role="radio" aria-checked={mode === m} className={mode === m ? "on" : ""} onClick={() => set({ mode: m })}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {mode === "delivery" && (
+        <ul className="muted small delivery-terms">
+          {delivery.map((t) => (
+            <li key={t.chain}>
+              {t.chain}: משלוח ₪{t.fee}, מינימום הזמנה ₪{t.minimumOrder}
+              {t.freeAbove ? `, חינם מעל ₪${t.freeAbove}` : ""}
+              {t.checkedAt && ` (נבדק ב-${t.checkedAt.split("-").reverse().join(".")})`}
+            </li>
+          ))}
+        </ul>
+      )}
+
       <label className="label" htmlFor="place">
         מאיפה יוצאים
       </label>
@@ -150,6 +182,8 @@ export function Settings({
         </p>
       )}
 
+      {mode === "store" && (
+        <>
       <label className="label" htmlFor="radius">
         מרחק בקו אווירי: עד {distance(value.radiusKm)}
       </label>
@@ -185,6 +219,8 @@ export function Settings({
             value={value.extraStopCost}
             onChange={(e) => set({ extraStopCost: Number(e.target.value) })}
           />
+        </>
+      )}
         </>
       )}
       {chains.length > 0 && (

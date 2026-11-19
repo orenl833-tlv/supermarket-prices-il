@@ -6,12 +6,15 @@ import { ResultsMap } from "./ResultsMap";
 
 export function Results({
   result,
+  mode = "store",
   origin,
   updatedAt = {},
   onAddUnits,
   onAddProduct,
 }: {
   result: CompareResult;
+  /** Delivery results have no distances and no map. */
+  mode?: "store" | "delivery";
   origin: { lat: number; lon: number };
   /** chain name -> when its prices were last updated */
   updatedAt?: Record<string, string | null>;
@@ -26,7 +29,11 @@ export function Results({
   if (!best) {
     return (
       <section className="card">
-        <p>לא נמצא סופר מתאים באזור. נסו להגדיל את המרחק או לסמן פחות מוצרים כ"חובה".</p>
+        <p>
+          {mode === "delivery"
+            ? "אין הזמנה שעומדת במינימום של רשת כלשהי. אפשר להוסיף מוצרים או לבחור קנייה בחנות."
+            : 'לא נמצא סופר מתאים באזור. נסו להגדיל את המרחק או לסמן פחות מוצרים כ"חובה".'}
+        </p>
       </section>
     );
   }
@@ -37,12 +44,13 @@ export function Results({
         נבדקו {result.storesConsidered} סניפים באזור.
         {result.unavailable.length > 0 && <> אין באזור: {result.unavailable.map(name).join(", ")}.</>}
       </p>
-      <ResultsMap origin={origin} plans={result.plans} />
-      <PlanCard plan={best} best name={name} updatedAt={updatedAt} onAddUnits={onAddUnits} onAddProduct={onAddProduct} />
+      {mode === "store" && <ResultsMap origin={origin} plans={result.plans} />}
+      <PlanCard plan={best} best mode={mode} name={name} updatedAt={updatedAt} onAddUnits={onAddUnits} onAddProduct={onAddProduct} />
       {rest.map((plan, i) => (
         <PlanCard
           key={i}
           plan={plan}
+          mode={mode}
           name={name}
           diff={plan.score - best.score}
           updatedAt={updatedAt}
@@ -56,6 +64,7 @@ export function Results({
 
 function PlanCard({
   plan,
+  mode = "store",
   best = false,
   diff = 0,
   name,
@@ -64,6 +73,7 @@ function PlanCard({
   onAddProduct,
 }: {
   plan: Plan;
+  mode?: "store" | "delivery";
   best?: boolean;
   diff?: number;
   name: (id: number) => string;
@@ -84,13 +94,15 @@ function PlanCard({
           {best && <span className="badge">הכי משתלם</span>}
           <h3 className="h3">{stores}</h3>
           <p className="muted small">
-            {plan.stops.map((s) => distance(s.store.distanceKm)).join(" + ")}
-            {plan.stops.length > 1 && " · שני סופרים"}
+            {mode === "delivery"
+              ? `משלוח הביתה${plan.fixedCost > 0 ? ` · דמי משלוח ${money(plan.fixedCost)}` : " · משלוח חינם"}`
+              : plan.stops.map((s) => distance(s.store.distanceKm)).join(" + ")}
+            {plan.stops.length > 1 && (mode === "delivery" ? " · שתי הזמנות" : " · שני סופרים")}
           </p>
         </div>
         <div className="price">
-          <strong>{money(plan.itemsCost)}</strong>
-          {plan.score !== plan.itemsCost && (
+          <strong>{money(mode === "delivery" ? plan.itemsCost + plan.fixedCost : plan.itemsCost)}</strong>
+          {plan.score !== (mode === "delivery" ? plan.itemsCost + plan.fixedCost : plan.itemsCost) && (
             <span className="muted small" title="כולל השלמת מוצרים חסרים, תחליפים ועצירה נוספת">
               משוקלל {money(plan.score)}
             </span>

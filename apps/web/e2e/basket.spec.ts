@@ -210,3 +210,16 @@ test("says what club membership would save, and applies club deals for members",
   await expect(page.locator(".plan.best .price strong")).toContainText("5.00");
   await expect(page.locator(".plan.best .club-saving")).toHaveCount(0);
 });
+
+test("compares home delivery: online prices plus the delivery fee", async ({ page }) => {
+  await add(page, "חלב");
+  await add(page, "לחם");
+  await page.getByRole("radio", { name: "משלוח הביתה" }).click();
+  await expect(page.getByText("יקרה: משלוח ₪20, מינימום הזמנה ₪10")).toBeVisible();
+  await page.getByRole("button", { name: "איפה הכי זול?" }).click();
+  const best = page.locator(".plan.best");
+  await expect(best.getByRole("heading")).toHaveText("יקרה יקרה אונליין");
+  await expect(best).toContainText("דמי משלוח");
+  await expect(best.locator(".price strong")).toContainText("35.00"); // 7 + 8 online, plus 20 delivery
+  await expect(page.locator(".results-map")).toHaveCount(0);
+});

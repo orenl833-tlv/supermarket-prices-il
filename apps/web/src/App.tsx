@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { compare, productsByIds, status, type BasketEntry, type ChainStatus, type CompareResult, type Product } from "./api";
+import { compare, deliveryTerms, productsByIds, status, type BasketEntry, type ChainStatus, type DeliveryTerms, type CompareResult, type Product } from "./api";
 import { Basket } from "./components/Basket";
 import { Deals } from "./components/Deals";
 import { ProductSearch } from "./components/ProductSearch";
@@ -23,12 +23,15 @@ export function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [freshness, setFreshness] = useState<ChainStatus[]>([]);
+  const [delivery, setDelivery] = useState<DeliveryTerms[]>([]);
+  const mode = delivery.length > 0 ? (settings.mode ?? "store") : "store";
   const online = useOnline();
 
   useEffect(() => storage.set("basket", basket), [basket]);
   useEffect(() => storage.set("settings", settings), [settings]);
   useEffect(() => {
     status().then(setFreshness).catch(() => {});
+    deliveryTerms().then(setDelivery).catch(() => {});
   }, []);
 
   // Opening a shared list (?list=...): load its products, then drop the
@@ -92,6 +95,7 @@ export function App() {
           maxStores: settings.maxStores,
           extraStopCost: settings.extraStopCost,
           memberChains: settings.memberChains ?? [],
+          mode,
         }),
       );
     } catch {
@@ -118,7 +122,12 @@ export function App() {
       <main>
         <ProductSearch onAdd={add} inBasket={inBasket} />
         <Basket entries={basket} onChange={change} onRemove={remove} onClear={() => setBasket([])} />
-        <Settings value={settings} onChange={setSettings} chains={freshness.map((f) => f.chain)} />
+        <Settings
+          value={settings}
+          onChange={setSettings}
+          chains={freshness.map((f) => f.chain)}
+          delivery={delivery}
+        />
 
         {!online && (
           <p className="warn" role="status">
@@ -132,6 +141,7 @@ export function App() {
         {result && (
           <Results
             result={result}
+            mode={mode}
             origin={settings.location}
             updatedAt={Object.fromEntries(freshness.map((f) => [f.chain, f.updatedAt]))}
             onAddProduct={(productId) => {

@@ -13,6 +13,7 @@ const CATEGORY = { priceFull: 2, promoFull: 4, stores: 5 } as const;
 export const shufersal: ChainSource = {
   code: "7290027600007",
   name: "שופרסל",
+  onlineStoreCode: "413", // "שופרסל ONLINE", WWW.SHUFERSAL.CO.IL
 
   async latestStoresFile() {
     const file = newest(await listFiles(CATEGORY.stores, "0"));

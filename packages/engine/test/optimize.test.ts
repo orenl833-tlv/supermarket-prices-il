@@ -387,3 +387,14 @@ describe("optimize with club deals", () => {
     expect(stop.clubSaving).toBeUndefined();
   });
 });
+
+describe("deliveryCost", () => {
+  const stop = (subtotal: number) => ({ store: store(1), lines: [], subtotal });
+  const model = deliveryCost(new Map([[1, { fee: 30, minimumOrder: 100, freeAbove: 300 }]]));
+
+  it("charges the fee, refuses orders below the minimum, and is free above the threshold", () => {
+    expect(model.fixedCost([stop(150)])).toBe(30);
+    expect(model.fixedCost([stop(90)])).toBeNull();
+    expect(model.fixedCost([stop(300)])).toBe(0);
+  });
+});

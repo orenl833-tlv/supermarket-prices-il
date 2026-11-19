@@ -10,6 +10,8 @@ export interface ChainSource {
    * (Yochananof sets City to 0). Checked by hand against the branch address.
    */
   extraStoreCodes?: string[];
+  /** The chain's online store, published as a branch with no address (for delivery). */
+  onlineStoreCode?: string;
   /** The newest Stores file (list of branches). */
   latestStoresFile(): Promise<RemoteFile>;
   /** The newest full price file of one branch, or null if none is published. */

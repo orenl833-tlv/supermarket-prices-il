@@ -14,6 +14,8 @@ export function walkingCost({ extraStopCost }: { extraStopCost: number }): CostM
 export interface DeliveryRule {
   fee: number; // ₪ per order
   minimumOrder: number; // ₪ of items
+  /** No delivery fee from this order size (₪ of items), when the chain offers it. */
+  freeAbove?: number;
 }
 
 /**
@@ -28,7 +30,7 @@ export function deliveryCost(rules: ReadonlyMap<number, DeliveryRule>): CostMode
       for (const { store, subtotal } of stops) {
         const rule = rules.get(store.id);
         if (!rule || subtotal < rule.minimumOrder) return null;
-        total += rule.fee;
+        total += rule.freeAbove !== undefined && subtotal >= rule.freeAbove ? 0 : rule.fee;
       }
       return total;
     },
