@@ -145,3 +145,20 @@ export async function reverseGeocode(lat: number, lon: number): Promise<string |
   if (!res.ok) throw new Error(`reverse failed: ${res.status}`);
   return (await res.json()).address;
 }
+
+export interface Deal {
+  productId: number;
+  name: string;
+  chain: string;
+  price: number;
+  promotion: string | null;
+  othersPrice: number;
+  saving: number;
+}
+
+/** "מציאות היום": products one chain sells far below the others today. */
+export async function deals(): Promise<Deal[]> {
+  const res = await fetch("/api/deals");
+  if (!res.ok) return [];
+  return (await res.json()).deals;
+}

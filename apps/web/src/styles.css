@@ -588,3 +588,17 @@ footer {
 .unlocked p {
   margin: 0 0 4px;
 }
+
+.deal-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+.deal-list li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.deal-list .badge {
+  margin-inline-start: 6px;
+}

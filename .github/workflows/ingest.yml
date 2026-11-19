@@ -59,7 +59,9 @@ jobs:
       # wait for a cold start. Never fails the run.
       - name: Warm up the site
         if: always() && steps.config.outputs.enabled == 'true'
-        run: curl -fsS --max-time 90 "$SITE_URL/api/status" > /dev/null || echo "site did not answer"
+        run: |
+          curl -fsS --max-time 90 "$SITE_URL/api/status" > /dev/null || echo "site did not answer"
+          curl -fsS --max-time 90 "$SITE_URL/api/deals" > /dev/null || echo "deals did not answer"
 
       # GitHub disables scheduled workflows after 60 days without commits.
       # Re-enabling it on every run keeps the daily schedule alive indefinitely.

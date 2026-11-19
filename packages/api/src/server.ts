@@ -2,6 +2,7 @@ import { missingPenalties, optimize, walkingCost, type BasketItem } from "@spil/
 import fastifyStatic from "@fastify/static";
 import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
+import { cachedDeals } from "./deals.js";
 import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
   activePromotions,
@@ -225,6 +226,10 @@ export function buildServer(
   );
 
   app.get("/api/status", async () => ({ chains: await freshness(db) }));
+
+  // "מציאות היום": products one chain sells far below the others (see deals.ts).
+  const deals = cachedDeals(db);
+  app.get("/api/deals", async () => ({ deals: await deals() }));
 
   return app;
 }
