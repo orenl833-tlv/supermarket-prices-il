@@ -195,7 +195,7 @@ export function buildServer(
       let stores: Array<Awaited<ReturnType<typeof storesNear>>[number] | Awaited<ReturnType<typeof onlineStores>>["stores"][number]>;
       let costModel: CostModel;
       if (mode === "delivery") {
-        const online = await onlineStores(db, deliveryTerms);
+        const online = await onlineStores(db, deliveryTerms, { lat, lon });
         stores = online.stores;
         costModel = deliveryCost(online.rules);
       } else {
@@ -255,11 +255,13 @@ export function buildServer(
 
   // Which chains can be compared for delivery, with their terms (the UI shows the toggle only if any).
   app.get("/api/delivery", async () => ({
-    terms: usableTerms(deliveryTerms).map(({ chain, fee, minimumOrder, freeAbove, checkedAt }) => ({
+    terms: usableTerms(deliveryTerms).map(({ chain, fee, minimumOrder, freeAbove, northOfLat, estimateFromBranch, checkedAt }) => ({
       chain,
       fee,
       minimumOrder,
       freeAbove: freeAbove ?? null,
+      area: northOfLat ? "צפון תל אביב (עד ארלוזורוב)" : null,
+      estimated: estimateFromBranch ?? false,
       checkedAt,
     })),
   }));

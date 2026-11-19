@@ -123,8 +123,11 @@ export function Settings({
         <ul className="muted small delivery-terms">
           {delivery.map((t) => (
             <li key={t.chain}>
-              {t.chain}: משלוח ₪{t.fee}, מינימום הזמנה ₪{t.minimumOrder}
+              {t.chain}: משלוח ₪{t.fee}
+              {t.minimumOrder > 0 ? `, מינימום הזמנה ₪${t.minimumOrder}` : ", בלי מינימום הזמנה"}
               {t.freeAbove ? `, חינם מעל ₪${t.freeAbove}` : ""}
+              {t.area && `, רק ל${t.area}`}
+              {t.estimated && " · מחירים משוערים לפי סניף"}
               {t.checkedAt && ` (נבדק ב-${t.checkedAt.split("-").reverse().join(".")})`}
             </li>
           ))}

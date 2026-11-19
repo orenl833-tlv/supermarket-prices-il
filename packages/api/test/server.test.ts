@@ -338,7 +338,7 @@ describe.skipIf(!url)("API", () => {
       ).json().plans;
     try {
       expect((await delivery.inject({ url: "/api/delivery" })).json().terms).toEqual([
-        { chain: "יקרה", fee: 20, minimumOrder: 15, freeAbove: null, checkedAt: "2026-11-19" },
+        { chain: "יקרה", fee: 20, minimumOrder: 15, freeAbove: null, area: null, estimated: false, checkedAt: "2026-11-19" },
       ]);
       const [plan] = await compare(2); // 2 × 8 = 16, above the minimum of 15
       expect(plan.stops[0].store.name).toBe("יקרה אונליין");
@@ -349,6 +349,33 @@ describe.skipIf(!url)("API", () => {
         await app.inject({ method: "POST", url: "/api/compare", payload: { ...center, items: [{ productId: milk, quantity: 1 }] } })
       ).json();
       expect(walk.plans.every((p: { stops: Array<{ store: { name: string } }> }) => p.stops[0]!.store.name !== "יקרה אונליין")).toBe(true);
+    } finally {
+      await delivery.close();
+    }
+  });
+
+  it("estimates delivery from the nearest branch for a chain without online prices, within its area", async () => {
+    const milk = (await search("חלב שומן"))[0].id;
+    const delivery = buildServer(pool, {
+      lookup: async () => null,
+      reverse: async () => null,
+      deliveryTerms: [
+        { chain: "זולה", fee: 30, minimumOrder: 0, northOfLat: 32.07, estimateFromBranch: true, checkedAt: "2026-11-19", source: "test" },
+      ],
+    });
+    const plans = async (lat: number) =>
+      (
+        await delivery.inject({
+          method: "POST",
+          url: "/api/compare",
+          payload: { lat, lon: 34.78, mode: "delivery", items: [{ productId: milk, quantity: 1 }] },
+        })
+      ).json().plans;
+    try {
+      const [plan] = await plans(32.08);
+      expect(plan.stops[0].store).toMatchObject({ chain: "זולה", priceNote: expect.stringContaining("זולה מרכז") });
+      expect(plan).toMatchObject({ itemsCost: 6.5, fixedCost: 30 }); // the branch price, plus delivery
+      expect(await plans(32.06)).toEqual([]); // south of the chain's delivery area
     } finally {
       await delivery.close();
     }

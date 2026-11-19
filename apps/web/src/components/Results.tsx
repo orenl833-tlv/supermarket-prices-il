@@ -111,6 +111,14 @@ function PlanCard({
         </div>
       </header>
 
+      {plan.stops
+        .filter((s) => s.store.priceNote)
+        .map((s) => (
+          <p key={`note-${s.store.id}`} className="muted small">
+            {s.store.chain}: {s.store.priceNote}
+          </p>
+        ))}
+
       {staleChains.map((chain) => (
         <p key={chain} className="warn small">
           המחירים של {chain} עודכנו {age(updatedAt[chain]!)}, ואולי השתנו מאז.

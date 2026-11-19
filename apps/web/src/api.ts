@@ -26,6 +26,8 @@ export interface BasketEntry {
 
 export interface Store {
   id: number;
+  /** Delivery from a chain without online prices: how the prices were estimated. */
+  priceNote?: string | null;
   name: string;
   chain: string;
   address: string | null;
@@ -172,6 +174,10 @@ export interface DeliveryTerms {
   fee: number;
   minimumOrder: number;
   freeAbove: number | null;
+  /** Part of the city the chain delivers to, when it is not all of it. */
+  area: string | null;
+  /** Prices are estimated from a branch (the chain publishes none for its online store). */
+  estimated: boolean;
   checkedAt: string | null;
 }
 
