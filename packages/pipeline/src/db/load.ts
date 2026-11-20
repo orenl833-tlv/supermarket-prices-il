@@ -39,6 +39,19 @@ export async function upsertStores(
 }
 
 /**
+ * The branches already saved for a chain: store_code -> stores.id.
+ * Used when a chain's Stores file is missing for the day (Victory sometimes
+ * publishes it after its price files), so its branches can still be updated.
+ */
+export async function knownStores(db: Db, chainId: number): Promise<Map<string, number>> {
+  const { rows } = await db.query<{ id: number; store_code: string }>(
+    "SELECT id, store_code FROM stores WHERE chain_id = $1 ORDER BY store_code",
+    [chainId],
+  );
+  return new Map(rows.map((r) => [r.store_code, r.id]));
+}
+
+/**
  * Make sure every item has a products row and a chain_products mapping.
  * Returns item_code -> products.id.
  *
