@@ -22,14 +22,17 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write # the report job opens or closes "Daily ingest (Israel) failing"
 
 jobs:
   ingest:
     runs-on: [self-hosted, israel]
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       ISRAEL_CHAINS: only
+      INGEST_RETRY_MINUTES: 20 # see ingest.yml
+      INGEST_REPORT: ${{ github.workspace }}/ingest-report.md
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -38,3 +41,27 @@ jobs:
       - run: npm ci
       - name: Ingest Carrefour and Victory
         run: npm run ingest -w @spil/pipeline
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ingest-report
+          path: ${{ github.workspace }}/ingest-report.md
+          if-no-files-found: ignore
+
+  # The issue is handled on a GitHub runner, so the owner's computer needs
+  # nothing beyond Node (no GitHub CLI, no bash).
+  report:
+    needs: ingest
+    if: always() && needs.ingest.result != 'skipped' && needs.ingest.result != 'cancelled'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ingest-report
+      - run: .github/scripts/report-ingest.sh "Daily ingest (Israel) failing" "${{ needs.ingest.result }}" ingest-report.md
