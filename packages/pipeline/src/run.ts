@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import type pg from "pg";
 import { carrefour } from "./chains/carrefour.js";
@@ -51,16 +52,27 @@ const AREA = areaFromEnv();
 
 type Outcome = "loaded" | "skipped" | "rejected" | "failed";
 
-export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
-  const totals: Record<Outcome, number> = { loaded: 0, skipped: 0, rejected: 0, failed: 0 };
+export interface IngestResult {
+  totals: Record<Outcome, number>;
+  /** One line per failed chain or branch, for the run report. */
+  failures: string[];
+}
 
-  for (const chain of CHAINS) {
+export async function ingest(pool: pg.Pool, chains: ChainSource[] = CHAINS): Promise<IngestResult> {
+  const totals: Record<Outcome, number> = { loaded: 0, skipped: 0, rejected: 0, failed: 0 };
+  const failures: string[] = [];
+  const fail = (line: string) => {
+    console.error(line);
+    failures.push(line);
+  };
+
+  for (const chain of chains) {
     try {
       const chainId = await upsertChain(pool, chain.code, chain.name);
       const storeIds = await chainStores(pool, chain, chainId);
 
       for (const [storeCode, storeId] of storeIds) {
-        const outcome = await ingestStore(pool, chain, chainId, storeCode, storeId);
+        const outcome = await ingestStore(pool, chain, chainId, storeCode, storeId, fail);
         totals[outcome]++;
         // Promotions only adjust prices, so a problem with them is logged but
         // does not fail the run: the branch's regular prices are still right.
@@ -69,11 +81,11 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
         );
       }
     } catch (err) {
-      console.error(`${chain.name}: ${message(err)}`);
+      fail(`${chain.name}: ${message(err)}`);
       totals.failed++;
     }
   }
-  return totals;
+  return { totals, failures };
 }
 
 /**
@@ -81,7 +93,7 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
  * If that file cannot be read, the branches saved on earlier runs are used,
  * so one missing file does not hold back every branch's prices.
  */
-async function chainStores(pool: pg.Pool, chain: ChainSource, chainId: number): Promise<Map<string, number>> {
+export async function chainStores(pool: pg.Pool, chain: ChainSource, chainId: number): Promise<Map<string, number>> {
   try {
     const storesFile = await chain.latestStoresFile();
     // The online store has no city; it is kept for delivery comparisons.
@@ -105,7 +117,7 @@ async function chainStores(pool: pg.Pool, chain: ChainSource, chainId: number): 
  * decode: a dropped connection can leave a gzip file cut short
  * ("unexpected end of file"), and a second download usually succeeds.
  */
-async function downloadText(chain: ChainSource, file: RemoteFile): Promise<string> {
+export async function downloadText(chain: ChainSource, file: RemoteFile): Promise<string> {
   try {
     return decodeFile(await chain.download(file));
   } catch (err) {
@@ -120,10 +132,11 @@ async function ingestStore(
   chainId: number,
   storeCode: string,
   storeId: number,
+  fail: (line: string) => void,
 ): Promise<Outcome> {
   const label = `${chain.name} #${storeCode}`;
   const file = await chain.latestPriceFullFile(storeCode).catch((err) => {
-    console.error(`${label}: listing failed: ${message(err)}`);
+    fail(`${label}: listing failed: ${message(err)}`);
     return undefined;
   });
   if (file === undefined) return "failed";
@@ -133,7 +146,7 @@ async function ingestStore(
   }
   const info = parseFileName(file.name);
   if (!info) {
-    console.error(`${label}: unexpected file name ${file.name}`);
+    fail(`${label}: unexpected file name ${file.name}`);
     return "failed";
   }
 
@@ -203,7 +216,7 @@ async function ingestStore(
     return "loaded";
   } catch (err) {
     await finish("failed", { error: message(err) });
-    console.error(`${label}: failed: ${message(err)}`);
+    fail(`${label}: failed: ${message(err)}`);
     return "failed";
   }
 }
@@ -267,11 +280,33 @@ function message(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
+/**
+ * Write the run's failures as Markdown for the workflow's failure issue, so
+ * the cause can be read in the email without opening the run log.
+ */
+export function failureReport(failures: string[], retried: boolean): string {
+  if (failures.length === 0) return "No failures.\n";
+  const note = retried ? " (still failing after a second attempt)" : "";
+  return `Failed${note}:\n\n${failures.map((f) => `- ${f}`).join("\n")}\n`;
+}
+
+// A chain that publishes late or a dropped download is usually fine a few
+// minutes later. Runs set INGEST_RETRY_MINUTES so a failed run waits and
+// tries again before reporting; files already loaded are skipped.
+const RETRY_MINUTES = Number(process.env.INGEST_RETRY_MINUTES ?? 0);
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const pool = createPool();
   try {
     await migrate(pool);
-    const totals = await ingest(pool);
+    let { totals, failures } = await ingest(pool);
+    const retried = failures.length > 0 && RETRY_MINUTES > 0;
+    if (retried) {
+      console.log(`first pass`, totals, `; trying the failures again in ${RETRY_MINUTES} minutes`);
+      await new Promise((resolve) => setTimeout(resolve, RETRY_MINUTES * 60_000));
+      ({ totals, failures } = await ingest(pool));
+    }
+    if (process.env.INGEST_REPORT) await writeFile(process.env.INGEST_REPORT, failureReport(failures, retried));
     const { classified, changed } = await classifyProducts(pool);
     console.log(`categories: ${classified} products classified, ${changed} changed`);
     // Coordinates for new or moved branches. A geocoding problem is logged
