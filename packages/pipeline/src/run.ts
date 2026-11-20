@@ -6,7 +6,15 @@ import { shufersal } from "./chains/shufersal.js";
 import { doralon, ramiLevy, yochananof } from "./chains/publishedprices.js";
 import { areaFromEnv, isInArea } from "./area.js";
 import type { ChainSource } from "./chains/types.js";
-import { applyPrices, replacePromotions, upsertChain, upsertProducts, upsertStores } from "./db/load.js";
+import type { RemoteFile } from "./types.js";
+import {
+  applyPrices,
+  knownStores,
+  replacePromotions,
+  upsertChain,
+  upsertProducts,
+  upsertStores,
+} from "./db/load.js";
 import { migrate } from "./db/migrate.js";
 import { createPool, inTransaction } from "./db/pool.js";
 import { decodeFile } from "./encoding.js";
@@ -47,19 +55,9 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
   const totals: Record<Outcome, number> = { loaded: 0, skipped: 0, rejected: 0, failed: 0 };
 
   for (const chain of CHAINS) {
-    let storeIds: Map<string, number>;
     try {
-      const storesFile = await chain.latestStoresFile();
-      // The online store has no city; it is kept for delivery comparisons.
-      const extra = [...(chain.extraStoreCodes ?? []), ...(chain.onlineStoreCode ? [chain.onlineStoreCode] : [])];
-      const stores = parseStores(decodeFile(await chain.download(storesFile))).filter((s) =>
-        isInArea(s, AREA, extra),
-      );
       const chainId = await upsertChain(pool, chain.code, chain.name);
-      storeIds = await upsertStores(pool, chainId, stores);
-      const onlineId = chain.onlineStoreCode ? storeIds.get(chain.onlineStoreCode) : undefined;
-      if (onlineId) await pool.query("UPDATE stores SET online = true WHERE id = $1", [onlineId]);
-      console.log(`${chain.name}: ${stores.length} branches in target cities`);
+      const storeIds = await chainStores(pool, chain, chainId);
 
       for (const [storeCode, storeId] of storeIds) {
         const outcome = await ingestStore(pool, chain, chainId, storeCode, storeId);
@@ -76,6 +74,44 @@ export async function ingest(pool: pg.Pool): Promise<Record<Outcome, number>> {
     }
   }
   return totals;
+}
+
+/**
+ * The chain's branches in the target area, from today's Stores file.
+ * If that file cannot be read, the branches saved on earlier runs are used,
+ * so one missing file does not hold back every branch's prices.
+ */
+async function chainStores(pool: pg.Pool, chain: ChainSource, chainId: number): Promise<Map<string, number>> {
+  try {
+    const storesFile = await chain.latestStoresFile();
+    // The online store has no city; it is kept for delivery comparisons.
+    const extra = [...(chain.extraStoreCodes ?? []), ...(chain.onlineStoreCode ? [chain.onlineStoreCode] : [])];
+    const stores = parseStores(await downloadText(chain, storesFile)).filter((s) => isInArea(s, AREA, extra));
+    const storeIds = await upsertStores(pool, chainId, stores);
+    const onlineId = chain.onlineStoreCode ? storeIds.get(chain.onlineStoreCode) : undefined;
+    if (onlineId) await pool.query("UPDATE stores SET online = true WHERE id = $1", [onlineId]);
+    console.log(`${chain.name}: ${stores.length} branches in target cities`);
+    return storeIds;
+  } catch (err) {
+    const known = await knownStores(pool, chainId);
+    if (known.size === 0) throw err;
+    console.warn(`${chain.name}: stores file unavailable (${message(err)}); using ${known.size} known branches`);
+    return known;
+  }
+}
+
+/**
+ * Download and decode a file, downloading again once if the bytes do not
+ * decode: a dropped connection can leave a gzip file cut short
+ * ("unexpected end of file"), and a second download usually succeeds.
+ */
+async function downloadText(chain: ChainSource, file: RemoteFile): Promise<string> {
+  try {
+    return decodeFile(await chain.download(file));
+  } catch (err) {
+    console.warn(`${chain.name}: ${file.name}: ${message(err)}; downloading again`);
+    return decodeFile(await chain.download(file));
+  }
 }
 
 async function ingestStore(
@@ -130,7 +166,7 @@ async function ingestStore(
     );
 
   try {
-    const parsed = parsePriceFull(decodeFile(await chain.download(file)));
+    const parsed = parsePriceFull(await downloadText(chain, file));
     // The file must be the chain's. The store number inside it may differ from
     // the one in the file name: Carrefour renumbered branches (e.g. the file
     // for 408 says StoreId 119). The name matches the branch list, so it wins.
@@ -193,7 +229,7 @@ async function ingestPromotions(
   );
   if (seen.length > 0) return;
 
-  const parsed = parsePromoFull(decodeFile(await chain.download(file)), info.time);
+  const parsed = parsePromoFull(await downloadText(chain, file), info.time);
   if (parsed.chainCode !== chain.code) throw new Error(`file is for chain ${parsed.chainCode}`);
   const skipped = Object.values(parsed.skipped).reduce((a, b) => a + b, 0);
   const stored = await inTransaction(pool, async (client) => {
