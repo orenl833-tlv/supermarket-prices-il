@@ -132,6 +132,42 @@ describe.skipIf(!url)("API", () => {
     expect(body.productNames[milk]).toBe("חלב 3% שומן 1 ליטר");
   });
 
+  it("returns a product's price history per chain, with an ended promotion", async () => {
+    const bread = (await search("לחם"))[0].id;
+    const dear = (await pool.query("SELECT id FROM stores WHERE name = 'יקרה מרכז'")).rows[0].id;
+    // A 2 for 14 deal that the chain stopped publishing two days ago.
+    await pool.query(
+      `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, quantity, price, starts_at, ends_at, ended_at)
+       VALUES ($1, $2, 'H1', '2 ב-14', 'bundle', 2, 14, now() - interval '5 days', now() + interval '5 days', now() - interval '2 days')`,
+      [dear, bread],
+    );
+    try {
+      const res = await app.inject({ url: `/api/history?product=${bread}&days=365` });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.name).toBe("לחם אחיד פרוס");
+      const byChain = Object.fromEntries(body.chains.map((c: { chain: string; points: unknown[] }) => [c.chain, c.points]));
+      expect(byChain["זולה"]).toMatchObject([{ regular: 7, best: 7, promotion: null }]);
+      expect(byChain["יקרה"]).toMatchObject([
+        { regular: 9, best: 9, promotion: null },
+        { regular: 9, best: 7, promotion: "2 ב-14" },
+        { regular: 9, best: 9, promotion: null },
+      ]);
+      // An ended promotion no longer prices the basket.
+      const plan = (
+        await app.inject({
+          method: "POST",
+          url: "/api/compare",
+          payload: { ...center, radiusKm: 2, items: [{ productId: bread, quantity: 2 }] },
+        })
+      ).json().plans[0];
+      expect(plan.stops[0].store.name).toBe("זולה מרכז");
+      expect((await app.inject({ url: "/api/history?product=999999" })).statusCode).toBe(404);
+    } finally {
+      await pool.query("DELETE FROM store_promotions");
+    }
+  });
+
   it("prices promotions: 1+1 on bread makes the dearer chain cheaper for two loaves", async () => {
     const bread = (await search("לחם"))[0].id;
     const dear = (await pool.query("SELECT id FROM stores WHERE name = 'יקרה מרכז'")).rows[0].id;

@@ -187,3 +187,27 @@ export async function deliveryTerms(): Promise<DeliveryTerms[]> {
   if (!res.ok) return [];
   return (await res.json()).terms;
 }
+
+export interface HistoryPoint {
+  /** From this time until the next point (or `now`), these prices held. */
+  at: string;
+  /** Lowest shelf price among the chain's Tel Aviv branches. */
+  regular: number;
+  /** Lowest price per unit with promotions counted. */
+  best: number;
+  promotion: string | null;
+}
+
+export interface PriceHistory {
+  name: string;
+  since: string;
+  now: string;
+  chains: Array<{ chain: string; points: HistoryPoint[] }>;
+}
+
+/** A product's price per chain over the last `days` days (see packages/api/src/history.ts). */
+export async function priceHistory(productId: number, days: number): Promise<PriceHistory> {
+  const res = await fetch(`/api/history?product=${productId}&days=${days}`);
+  if (!res.ok) throw new Error(`history failed: ${res.status}`);
+  return res.json();
+}

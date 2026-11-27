@@ -18,6 +18,17 @@
   --veg-main: #e8b830;
   --veg-deep: #c8961e;
   --veg-dark: #8f6a0f;
+  /* Chart series, one fixed color per chain (see history.ts). Validated for
+     color-blind separation; the light steps below 3:1 on the card are backed
+     by the legend and the table view. */
+  --series-1: #257de0;
+  --series-2: #f47230;
+  --series-3: #00b894;
+  --series-4: #f2a600;
+  --series-5: #ee7fac;
+  --series-6: #008a17;
+  --series-7: #6a4ce2;
+  --chart-grid: #ebd48a;
   color-scheme: light;
 }
 
@@ -39,6 +50,14 @@
     --veg-main: #dcaa2c;
     --veg-deep: #b9891a;
     --veg-dark: #8a650d;
+    --series-1: #338ced;
+    --series-2: #e76624;
+    --series-3: #00a888;
+    --series-4: #d28e05;
+    --series-5: #e24d8b;
+    --series-6: #0aac23;
+    --series-7: #9887ef;
+    --chart-grid: #43391d;
     color-scheme: dark;
   }
 }
@@ -715,4 +734,87 @@ footer {
 .switch input:focus-visible + .switch-track {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Price history chart */
+.history-toggle {
+  margin-top: 6px;
+}
+.history {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.history-plot {
+  position: relative;
+}
+.history-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: pan-y;
+}
+.history .grid {
+  stroke: var(--chart-grid);
+  stroke-width: 1;
+}
+.history .axis {
+  fill: var(--muted);
+  font-size: 11px;
+}
+.history .price-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.history .promo-line {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  stroke-linecap: round;
+}
+.history .crosshair {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+.history-tip {
+  position: absolute;
+  top: 4px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  pointer-events: none;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.12);
+  max-width: 60%;
+}
+.tip-row {
+  white-space: nowrap;
+}
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.history-legend {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
+}
+.history-table th,
+.history-table td {
+  text-align: start;
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--border);
 }

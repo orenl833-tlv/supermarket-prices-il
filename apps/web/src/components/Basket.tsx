@@ -3,6 +3,7 @@ import type { BasketEntry, Importance } from "../api";
 import { useState } from "react";
 import { size } from "../format";
 import { shareUrl } from "../share";
+import { PriceHistory } from "./PriceHistory";
 
 const IMPORTANCE: Array<{ value: Importance; label: string; hint: string }> = [
   { value: "must", label: "חובה", hint: "רק חנויות שיש בהן את המוצר" },
@@ -23,6 +24,8 @@ export function Basket({
 }) {
   const [link, setLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // The product whose price history is open (one at a time keeps the list short).
+  const [historyOf, setHistoryOf] = useState<number | null>(null);
 
   /**
    * Shares the list as a link: the phone's share sheet where there is one
@@ -137,6 +140,14 @@ export function Basket({
                   ))}
                 </div>
               </div>
+              <button
+                className="link small history-toggle"
+                aria-expanded={historyOf === product.id}
+                onClick={() => setHistoryOf(historyOf === product.id ? null : product.id)}
+              >
+                {historyOf === product.id ? "הסתרת היסטוריית המחיר" : "היסטוריית מחיר"}
+              </button>
+              {historyOf === product.id && <PriceHistory productId={product.id} />}
             </li>
           );
         })}

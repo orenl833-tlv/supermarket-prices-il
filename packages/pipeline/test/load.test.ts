@@ -97,7 +97,7 @@ describe.skipIf(!url)("database loading", () => {
     expect((await upsertProducts(pool, chainId, [tomato])).get("123")).toBe(c.get("123"));
   });
 
-  it("replaces a branch's promotions, keeping only products the chain lists", async () => {
+  it("updates a branch's promotions and keeps ended ones as history", async () => {
     await upsertProducts(pool, chainId, [
       { itemCode: "7290000000011", isBarcode: true, name: "חלב", manufacturer: null, quantity: null, unit: null, isWeighted: false, price: 7 },
     ]);
@@ -117,11 +117,29 @@ describe.skipIf(!url)("database loading", () => {
       endsAt: day(30),
     });
 
-    // The second item code is unknown to this chain: dropped.
-    expect(await replacePromotions(pool, chainId, storeId, [row("7290000000011", "A"), row("999", "A")])).toBe(1);
-    expect(await replacePromotions(pool, chainId, storeId, [row("7290000000011", "B")])).toBe(1);
-    const { rows } = await pool.query("SELECT promotion_id FROM store_promotions WHERE store_id = $1", [storeId]);
-    expect(rows).toEqual([{ promotion_id: "B" }]); // A was replaced, not kept
+    const state = async () =>
+      (
+        await pool.query(
+          "SELECT promotion_id, ended_at FROM store_promotions WHERE store_id = $1 ORDER BY promotion_id",
+          [storeId],
+        )
+      ).rows;
+
+    // The second item code is unknown to this chain: dropped. A duplicate row is stored once.
+    const a = row("7290000000011", "A");
+    expect(await replacePromotions(pool, chainId, storeId, [a, a, row("999", "A")], day(1))).toBe(1);
+    // Day 2: A is gone from the file, B is new. A stays, ended at the file's time.
+    expect(await replacePromotions(pool, chainId, storeId, [row("7290000000011", "B")], day(2))).toBe(1);
+    expect(await state()).toEqual([
+      { promotion_id: "A", ended_at: day(2) },
+      { promotion_id: "B", ended_at: null },
+    ]);
+    // Day 3: A is listed again (reopened), B keeps running.
+    await replacePromotions(pool, chainId, storeId, [row("7290000000011", "A"), row("7290000000011", "B")], day(3));
+    expect(await state()).toEqual([
+      { promotion_id: "A", ended_at: null },
+      { promotion_id: "B", ended_at: null },
+    ]);
   });
 });
 

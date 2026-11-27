@@ -310,7 +310,7 @@ export async function activePromotions(
             min_purchase::float AS min_purchase, max_units, club_name
      FROM store_promotions
      WHERE store_id = ANY($1::int[]) AND product_id = ANY($2::int[])
-       AND starts_at <= $3 AND ends_at > $3`,
+       AND starts_at <= $3 AND ends_at > $3 AND ended_at IS NULL`,
     [storeIds, productIds, now],
   );
   const table = new Map<number, Map<number, Promotion[]>>();
@@ -324,7 +324,7 @@ export async function activePromotions(
   return table;
 }
 
-function toPromotion(r: {
+export function toPromotion(r: {
   description: string;
   kind: Promotion["kind"];
   quantity: number | null;
@@ -387,7 +387,7 @@ export async function unlockableDeals(
      JOIN price_changes pc ON pc.store_id = sp.store_id AND pc.product_id = sp.product_id AND pc.valid_to IS NULL
      WHERE sp.store_id = ANY($1::int[]) AND sp.product_id <> ALL($2::int[])
        AND sp.kind = 'unitPrice' AND sp.min_purchase > 0 AND sp.price < pc.price AND sp.club_name IS NULL
-       AND sp.starts_at <= $3 AND sp.ends_at > $3
+       AND sp.starts_at <= $3 AND sp.ends_at > $3 AND sp.ended_at IS NULL
      ORDER BY sp.store_id, 1 - sp.price / pc.price DESC`,
     [storeIds, basketProductIds, now],
   );
