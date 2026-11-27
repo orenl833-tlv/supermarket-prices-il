@@ -61,6 +61,9 @@ export function unitPriceUnder(regular: number, p: Promotion): number {
   return Math.round((promoCost(regular, units, p) / units) * 100) / 100;
 }
 
+/** Changes closer together than this come from the same daily run. */
+const SAME_RUN_MS = 6 * 3_600_000;
+
 const validAt = (t: number, from: Date, to: Date | null) => from.getTime() <= t && (to === null || to.getTime() > t);
 
 /**
@@ -106,6 +109,14 @@ export function chainHistory(prices: PricePeriod[], promos: PromoPeriod[], since
       if (best >= regular) promotion = null;
       const last = points.at(-1);
       if (last && last.regular === regular && last.best === best && last.promotion === promotion) continue;
+      // A daily run loads branches one after another, minutes apart. Changes
+      // within one run are one change: the later state replaces the earlier
+      // one, keeping its time (otherwise the first day shows a fake drop as
+      // the chain's cheaper branches are loaded).
+      if (last && t - Date.parse(last.at) < SAME_RUN_MS) {
+        Object.assign(last, { regular, best, promotion });
+        continue;
+      }
       points.push({ at: new Date(t).toISOString(), regular, best, promotion });
     }
     return { chain, points };
