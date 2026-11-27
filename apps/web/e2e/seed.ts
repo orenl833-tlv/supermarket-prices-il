@@ -53,6 +53,12 @@ export async function seed(pool: pg.Pool): Promise<void> {
 
   const b = await branch("1000000000002", "יקרה", "יקרה דיזנגוף", 32.0771, 34.7748);
   const bIds = await upsertProducts(pool, b.chainId, [MILK, BREAD, EGGS_B]);
+  // An earlier price list, for the price history chart: milk went up from 7.50.
+  await applyPrices(pool, b.storeId, new Date("2026-11-10T04:00:00Z"), [
+    { productId: bIds.get(MILK.itemCode)!, price: 7.5 },
+    { productId: bIds.get(BREAD.itemCode)!, price: 9 },
+    { productId: bIds.get(EGGS_B.itemCode)!, price: 13 },
+  ]);
   await applyPrices(pool, b.storeId, day, [
     { productId: bIds.get(MILK.itemCode)!, price: 7.9 },
     { productId: bIds.get(BREAD.itemCode)!, price: 9 },
@@ -76,6 +82,13 @@ export async function seed(pool: pg.Pool): Promise<void> {
     `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, price, min_purchase, starts_at, ends_at)
      VALUES ($1, $2, 'E2E2', 'ביצים ב-6 מעל 10', 'unitPrice', 6, 10, now() - interval '1 day', now() + interval '30 days')`,
     [a.storeId, aIds.get(EGGS_A.itemCode)!],
+  );
+
+  // A promotion that has ended (kept for the price history chart): milk 2 for 14 at "יקרה".
+  await pool.query(
+    `INSERT INTO store_promotions (store_id, product_id, promotion_id, description, kind, quantity, price, starts_at, ends_at, ended_at)
+     VALUES ($1, $2, 'E2E4', '2 ב-14 חלב', 'bundle', 2, 14, '2026-11-18T04:00:00Z', '2026-11-30T04:00:00Z', '2026-11-22T04:00:00Z')`,
+    [b.storeId, bIds.get(MILK.itemCode)!],
   );
 
   // The online store of "יקרה", for delivery: no address, its own prices.

@@ -21,6 +21,7 @@ Under Israel's food price transparency law, large supermarket chains publish the
 - Sends the chosen plan as a shopping list grouped by store.
 - Compares home delivery from Shufersal and Rami Levy's online stores (their own published prices, plus the delivery fee and minimum order).
 - Applies promotions: takes free units (2+1 when you want 2 gives 3 for the price of 2) and suggests deals that cost a little more.
+- Shows each product's price history per chain: the shelf price as a step line, and the price under a promotion while it ran.
 - Flags a chain whose prices are out of date, and shows per chain how many branches and products were loaded and when.
 - Runs unattended: a daily update started on time by an external scheduler, failure alerts as GitHub issues, and no AI calls or paid services.
 
@@ -144,7 +145,8 @@ The `Daily ingest` workflow runs every morning (and on demand from the Actions t
 The daily run costs nothing and makes no AI calls: classification is rule-based. It is built to need no attention:
 
 - **On time:** an external scheduler (cron-job.org) starts both runs at 05:45 and 05:50 through the GitHub API, because GitHub starts scheduled runs hours late on busy days. A GitHub schedule remains as a backup; runs are idempotent, so a duplicate finishes in about a minute.
-- **Alerts:** a failed run opens a "Daily ingest failing" issue (GitHub emails the owner), and the next good run closes it.
+- **Self-healing:** a failed chain or branch is tried again after 20 minutes (a late file or a dropped download usually recovers); a chain whose branch list is missing is updated from its saved branches.
+- **Alerts:** a run that still fails opens a "Daily ingest failing" issue listing each failed chain or branch (GitHub emails the owner), and the next good run closes it.
 - **Schedule kept alive:** GitHub turns off scheduled workflows after 60 days without commits; each run re-enables its own workflow.
 - **Warm site:** each run calls the site, so the free Render instance is awake for the morning's first visitors.
 

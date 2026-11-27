@@ -83,7 +83,7 @@ export async function chainPrices(db: pg.Pool, now = new Date()): Promise<ChainP
        JOIN products p ON p.id = pc.product_id
        LEFT JOIN store_promotions sp
          ON sp.store_id = pc.store_id AND sp.product_id = pc.product_id
-        AND sp.starts_at <= $1 AND sp.ends_at > $1 AND sp.min_purchase IS NULL AND sp.club_name IS NULL
+        AND sp.starts_at <= $1 AND sp.ends_at > $1 AND sp.ended_at IS NULL AND sp.min_purchase IS NULL AND sp.club_name IS NULL
        WHERE pc.valid_to IS NULL AND p.barcode IS NOT NULL AND NOT p.is_weighted
      ),
      per_chain AS (

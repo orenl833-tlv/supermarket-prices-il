@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance } from "fastify";
 import type pg from "pg";
 import { cachedDeals } from "./deals.js";
 import { DELIVERY_TERMS, onlineStores, usableTerms, type DeliveryTerms } from "./delivery.js";
+import { productHistory } from "./history.js";
 import { nominatim, type AddressLookup, type ReverseLookup } from "./geocode.js";
 import {
   activePromotions,
@@ -252,6 +253,28 @@ export function buildServer(
   );
 
   app.get("/api/status", async () => ({ chains: await freshness(db) }));
+
+  // Price history of one product per chain, for the chart (see history.ts).
+  app.get<{ Querystring: { product: number; days?: number } }>(
+    "/api/history",
+    {
+      schema: {
+        querystring: {
+          type: "object",
+          required: ["product"],
+          properties: {
+            product: { type: "integer", minimum: 1 },
+            days: { type: "integer", minimum: 7, maximum: 365, default: 90 },
+          },
+        },
+      },
+    },
+    async (req, reply) => {
+      const history = await productHistory(db, req.query.product, req.query.days ?? 90);
+      if (!history) return reply.code(404).send({ error: "Unknown product" });
+      return history;
+    },
+  );
 
   // Which chains can be compared for delivery, with their terms (the UI shows the toggle only if any).
   app.get("/api/delivery", async () => ({

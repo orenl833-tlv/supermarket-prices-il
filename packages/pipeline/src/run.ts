@@ -246,7 +246,7 @@ async function ingestPromotions(
   if (parsed.chainCode !== chain.code) throw new Error(`file is for chain ${parsed.chainCode}`);
   const skipped = Object.values(parsed.skipped).reduce((a, b) => a + b, 0);
   const stored = await inTransaction(pool, async (client) => {
-    const n = await replacePromotions(client, chainId, storeId, parsed.rows);
+    const n = await replacePromotions(client, chainId, storeId, parsed.rows, info.time);
     await client.query(
       `INSERT INTO promo_runs (store_id, file_name, file_time, promotions, skipped) VALUES ($1, $2, $3, $4, $5)`,
       [storeId, file.name, info.time, n, skipped],

@@ -225,3 +225,19 @@ test("compares home delivery: online prices plus the delivery fee", async ({ pag
   await expect(best.locator(".price strong")).toContainText("35.00"); // 7 + 8 online, plus 20 delivery
   await expect(page.locator(".results-map")).toHaveCount(0);
 });
+
+test("shows a product's price history per chain, with an ended promotion", async ({ page }) => {
+  await add(page, "חלב");
+  await page.getByRole("button", { name: "היסטוריית מחיר" }).click();
+
+  const history = page.locator(".history");
+  await expect(history.getByRole("img", { name: /מחיר חלב/ })).toBeVisible();
+  await expect(history.locator(".price-line")).toHaveCount(2); // one line per chain
+  await expect(history.locator(".promo-line")).toHaveCount(1); // 2 for 14 at יקרה, 18-22.11
+  // Milk at יקרה went from 7.50 to 7.90.
+  await expect(history.locator(".history-legend li", { hasText: "יקרה" })).toContainText(/7\.90.*\(\+5%\)/);
+  await expect(history).toContainText("הזול ביותר היום: זולה");
+
+  await history.getByText("הצגה כטבלה").click();
+  await expect(history.locator(".history-table")).toContainText("2 ב-14 חלב");
+});
