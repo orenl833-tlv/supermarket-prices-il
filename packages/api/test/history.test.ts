@@ -60,4 +60,14 @@ describe("chainHistory", () => {
       ["שופרסל", [["12", 9], ["15", 10]]],
     ]);
   });
+
+  it("counts the branches loaded one after another in a daily run as one change", () => {
+    const at = (day: number, hour: number, minute: number) => new Date(Date.UTC(2026, 10, day, hour, minute));
+    const prices: PricePeriod[] = [
+      { chain: "ויקטורי", storeId: 1, price: 19.9, from: at(17, 3, 15), to: null },
+      { chain: "ויקטורי", storeId: 2, price: 15.9, from: at(17, 3, 20), to: null },
+    ];
+    const [h] = chainHistory(prices, [], day(1), day(20));
+    expect(h!.points).toEqual([{ at: at(17, 3, 15).toISOString(), regular: 15.9, best: 15.9, promotion: null }]);
+  });
 });
